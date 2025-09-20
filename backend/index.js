@@ -13,7 +13,7 @@ app.use(cors({
 }))
 app.use(express.json())
 app.use(cookieParser())
-app.use("./api/auth",authRouter)
+app.use("/api/auth",authRouter)
 app.listen(port, () => {
     connectDb()
   console.log(`Server is running on port ${port}`);

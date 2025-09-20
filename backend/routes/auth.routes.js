@@ -4,9 +4,8 @@ import { signIn, signOut, signUp } from "../controllers/auth.controllers.js"
 const authRouter=express.Router()
 
 
-authRouter.post("/SignUp",signUp)
-
-authRouter.post("/SignIn",signIn)
-authRouter.post("/SignOut",signOut)
+authRouter.post("/signup", signUp)
+authRouter.post("/signin", signIn)
+authRouter.post("/signout", signOut)
 
 export default authRouter
