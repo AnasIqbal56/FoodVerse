@@ -30,7 +30,7 @@ function SignIn() {
       );
       console.log(result);
     } catch (error) {
-      console.log(error);
+      console.log(error,"Invalid credentials");
     }
   };
 
@@ -128,7 +128,7 @@ function SignIn() {
         >
           {" "}
            Want to create a new account?{" "}
-          <span className="text-[#ff4d2d]"> Sign Uo </span>
+          <span className="text-[#ff4d2d]"> Sign Up </span>
         </p>
       </div>
     </div>
