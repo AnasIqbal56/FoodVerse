@@ -135,7 +135,7 @@ export const verifyOtp = async (req,res) => {
 
     }
 }
-
+//reset password controller
 export const resetPassword = async (req,res) => {
     try {
         
@@ -156,7 +156,7 @@ export const resetPassword = async (req,res) => {
     
 }
 //Contrller foor Google authentication
-
+// TRY 1 HAVING ERROR WITHOUT PASSWORD NOT AUTHENTICATING 
 // export const googleauth = async (req,res) => {
 //     try {
 //         const{fullName,email,mobile,role} = req.body
@@ -183,31 +183,84 @@ export const resetPassword = async (req,res) => {
 //     }
     
 // }
+//TRY 2 BACKEND IS CRASHING HERE
+// export const googleauth = async (req, res) => {
+//   try {
+//     const { fullName, email, mobile, role } = req.body;
 
+//     console.log("Received Google Auth payload:", req.body);
+
+//     let user = await User.findOne({ email });
+//     if (!user) {
+//         const randomPassword = Math.random().toString(36).slice(-8); // generate random 8-char string
+//       const hashedPassword = await bcrypt.hash(randomPassword, 10);
+//       user = await User.create({ fullName, email, mobile, role ,password:hashedPassword});
+//     }
+
+//     const token = await genToken(user._id);
+//     res.cookie("token", token, {
+//       secure: false,
+//       sameSite: "strict",
+//       maxAge: 7 * 24 * 3600 * 1000,
+//       httpOnly: true,
+//     });
+
+//     return res.status(200).json(user);
+//   } catch (error) {
+//     console.error("Google Authentication Error:", error);
+//     return res.status(500).json({ message: `Google Authentication Error: ${error.message}` });
+//   }
+// };
+
+// TRY3 
 export const googleauth = async (req, res) => {
   try {
     const { fullName, email, mobile, role } = req.body;
 
     console.log("Received Google Auth payload:", req.body);
 
-    let user = await User.findOne({ email });
-    if (!user) {
-        const randomPassword = Math.random().toString(36).slice(-8); // generate random 8-char string
-      const hashedPassword = await bcrypt.hash(randomPassword, 10);
-      user = await User.create({ fullName, email, mobile, role ,password:hashedPassword});
+    // Check for missing fields
+    if (!email) {
+      return res.status(400).json({ message: "Missing required fields." });
     }
 
+    let user = await User.findOne({ email });
+
+    // If user doesn't exist, create a new one
+    if (!user) {
+      const randomPassword = Math.random().toString(36).slice(-8);
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+      user = await User.create({
+        fullName,
+        email,
+        mobile,
+        role,
+        password: hashedPassword,
+      });
+    }
+
+    // Generate token
     const token = await genToken(user._id);
+
+    // Set token cookie
     res.cookie("token", token, {
-      secure: false,
+      httpOnly: true,
+      secure: false, // change to true if using HTTPS
       sameSite: "strict",
       maxAge: 7 * 24 * 3600 * 1000,
-      httpOnly: true,
     });
 
-    return res.status(200).json(user);
+    return res.status(200).json({
+      message: "Google authentication successful",
+      user,
+    });
+
   } catch (error) {
     console.error("Google Authentication Error:", error);
-    return res.status(500).json({ message: `Google Authentication Error: ${error.message}` });
+    return res.status(500).json({
+      message: `Google Authentication Error: ${error.message}`,
+    });
   }
 };
+

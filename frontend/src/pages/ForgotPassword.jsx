@@ -12,29 +12,38 @@ function ForgotPassword() {
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const navigate = useNavigate();
+    const [err, setErr] = useState("");
+    const [loading, setLoading] = useState(false);
 
 
     const handleSendOtp=async () => {
-        
+        setLoading(true);
         try {
             const result=await axios.post(`${serverUrl}/api/auth/send-otp`,{email},
             {withCredentials:true})
             console.log(result)
+            setErr("")
             setStep(2)
+            setLoading(false);
         } catch (error) {
             console.log(error)
+            setErr(error.response.data.message);
+            setLoading(false);
         }
     }
 
  const handleVerifyOtp=async () => {
-        
+    setLoading(true);
         try {
             const result=await axios.post(`${serverUrl}/api/auth/verify-otp`,{email,otp},
             {withCredentials:true})
             console.log(result)
+            setErr("")
             setStep(3)
+            setLoading(false);
         } catch (error) {
-            console.log(error)
+            setErr(error?.response?.data?.message);
+            setLoading(false);
         }
     }
 
@@ -42,16 +51,19 @@ const handleResetPassword=async () => {
         if(newPassword!=confirmPassword){
             return null
         }
+        setLoading(true);
         try {
             console.log("Reset password payload:", { email, newPassword, confirmPassword });
 
             const result=await axios.post(`${serverUrl}/api/auth/reset-password`,{email,newpassword:newPassword},
             {withCredentials:true})
+            setErr("")
             console.log(result)
-            alert(result.data.message);
+            setLoading(false);
             navigate("/signin")
         } catch (error) {
-            console.log(error)
+            setErr(error?.response?.data?.message);
+            setLoading(false);
         }
     }
 
@@ -75,16 +87,17 @@ const handleResetPassword=async () => {
                                 palceholder-gray-400"
                                 placeholder="Enter your e-mail"
                                 onChange={(e) => setEmail(e.target.value)}
-                                value={email}
+                                value={email} required
                             />
                         </div>
 
 
                         <button
                             className={`w-full font-semibold rounded-lg py-2 transition duration-200 
-                            bg-[#ff4d2d] text-white hover:bg-[#e64323] cursor-pointer`} onClick={handleSendOtp}>
-                            Send OTP
+                            bg-[#ff4d2d] text-white hover:bg-[#e64323] cursor-pointer`} onClick={handleSendOtp}> disable={loading}
+                            {loading ? <ClipLoader size={20} color="white" /> : "Send OTP"}
                         </button>
+                        {err && <p className="text-red-500 text-center mt-2">*{err}</p>}
 
                     </div>
                 }
@@ -101,16 +114,17 @@ const handleResetPassword=async () => {
                                 palceholder-gray-400"
                                 placeholder="Enter your OTP"
                                 onChange={(e) => setOtp(e.target.value)}
-                                value={otp}
+                                value={otp} required
                             />
                         </div>
 
 
                         <button
                             className={`w-full font-semibold rounded-lg py-2 transition duration-200 
-                            bg-[#ff4d2d] text-white hover:bg-[#e64323] cursor-pointer`} onClick={handleVerifyOtp}>
-                            Verify OTP
+                            bg-[#ff4d2d] text-white hover:bg-[#e64323] cursor-pointer`} onClick={handleVerifyOtp} disabled={loading}>
+                            {loading ? <ClipLoader size={20} color="white" /> : "Verify OTP"}
                         </button>
+                        {err && <p className="text-red-500 text-center mt-2">*{err}</p>}
 
                     </div>
                 }
@@ -128,7 +142,7 @@ const handleResetPassword=async () => {
                                 palceholder-gray-400"
                                 placeholder="Enter New Password"
                                 onChange={(e) => setNewPassword(e.target.value)}
-                                value={newPassword}
+                                value={newPassword} required
                             />
                         </div>
 
@@ -150,9 +164,10 @@ const handleResetPassword=async () => {
 
                         <button
                             className={`w-full font-semibold rounded-lg py-2 transition duration-200 
-                            bg-[#ff4d2d] text-white hover:bg-[#e64323] cursor-pointer`} onClick={handleResetPassword}>
-                            Reset Password
+                            bg-[#ff4d2d] text-white hover:bg-[#e64323] cursor-pointer`} onClick={handleResetPassword} disabled={loading}>
+                            {loading ? <ClipLoader size={20} color="white" /> : "Reset Password"}
                         </button>
+                        {err && <p className="text-red-500 text-center mt-2">*{err}</p>}
 
                     </div>
                 }
