@@ -183,7 +183,7 @@ export const resetPassword = async (req,res) => {
 //     }
     
 // }
-//TRY 2 BACKEND IS CRASHING HERE
+//TRY 2 BACKEND OF SIGNIN IS CRASHING HERE
 // export const googleauth = async (req, res) => {
 //   try {
 //     const { fullName, email, mobile, role } = req.body;
