@@ -6,7 +6,7 @@ export const getCurrentUser = async (req,res) => {
         if(!userId){
             return res.status(400).json({message:"User ID not found"})
         }
-        const user = await User.findbyId(userId)
+        const user = await User.findById(userId)
         if(!user){
             return res.status(400).json({message:"User not Found"})
         }
