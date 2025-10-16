@@ -24,7 +24,7 @@ export const signUp = async (req, res) => {
         email,
         role,
         mobile,
-        password:hashedPassword  
+        password:hashedPassword
     }
 )
 const token=await genToken(user._id)

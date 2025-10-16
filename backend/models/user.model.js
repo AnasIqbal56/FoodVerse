@@ -11,7 +11,6 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: true 
     },
     mobile: {
         type: String,
@@ -34,6 +33,10 @@ const userSchema = new mongoose.Schema({
     otpExpires:{
         type:Date
     }
+    // loginType: {
+    //     enum: ["google", "password"],
+    //     required: true
+    // }
 }, { timestamps: true });
 
 const User = mongoose.model("User", userSchema);

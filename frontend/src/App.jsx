@@ -3,10 +3,12 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import ForgotPassword from "./pages/ForgotPassword";
+import useGetCurrentUser from "./hooks/useGetCurrentUser";
 
 export const serverUrl = "http://localhost:8000";
 
 function App() {
+  useGetCurrentUser()
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/signin" />} />

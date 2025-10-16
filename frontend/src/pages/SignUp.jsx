@@ -54,7 +54,7 @@ function SignUp() {
     }
 
   const provider = new GoogleAuthProvider()
-  const result = await signInWithPopup(auth, provider)
+  const result = await signInWithPopup(auth, provider) // Auth Complete
   try {
     const {data} = await axios.post(`${serverUrl}/api/auth/google-auth`,{
       fullName:result.user.displayName,
