@@ -4,6 +4,8 @@ import { FaRegEye } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import { FaRegEyeSlash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from 'react-redux';
+import { setUserData } from "../redux/userSlice";
 
 import axios from "axios";
 import { serverUrl } from "../App";
@@ -22,6 +24,7 @@ function SignIn() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
 
   const handleSignIn = async () => {
     setLoading(true);
@@ -34,7 +37,7 @@ function SignIn() {
         },
         { withCredentials: true }
       );
-      console.log(result);
+      dispatch(setUserData(result.data))
       setErr("")
       setLoading(false);
     } catch (error) {
@@ -50,7 +53,7 @@ function SignIn() {
       const {data} = await axios.post(`${serverUrl}/api/auth/google-auth`,{
         email: result.user.email,
       },{withCredentials:true})
-      console.log(data)
+      dispatch(setUserData(data))
     } catch (error) {
       console.log(error)
     }
