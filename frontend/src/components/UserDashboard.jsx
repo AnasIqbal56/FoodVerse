@@ -1,11 +1,16 @@
 import React from "react";
+import Nav from '../components/Nav.jsx';
+// import { FaLocationDot } from "react-icons/fa6";
+// import { FaSearch } from "react-icons/fa";
+// import { IoCartOutline } from "react-icons/io5";
 
 function UserDashboard() {
+  console.log('UserDashboard mounted');
   return (
-    <div>
-      <h1>User Dashboard</h1>
-      {/* Add more dashboard components and functionality here */}
-    </div>
+    <>
+      <Nav />
+     
+    </>
   );
 }
 

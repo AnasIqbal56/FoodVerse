@@ -5,10 +5,12 @@ import DeliveryBoy from '../components/DeliveryBoy.jsx';
 import OwnerDashboard from '../components/OwnerDashboard.jsx';
 
 function Home() {
-  const userData = useSelector(state => state.state?.user?.userData);
+  const userData = useSelector(state => state.user.userData);
+
+  console.log('Home userData:', userData); // <--- debug
 
   if (!userData) {
-    return <div>Loading...</div>; // Prevent crash before userData is available
+    return <div>Loading...</div>;
   }
 
   return (
