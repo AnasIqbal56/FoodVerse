@@ -13,7 +13,7 @@ import { LuReceipt } from "react-icons/lu";
 import { use } from "react";
 
 function Nav() {
-    const { userData, city } = useSelector(state => state.user);
+    const { userData, currentCity } = useSelector(state => state.user);
     const { myShopData } = useSelector(state => state.owner);
     const [showInfo, setShowInfo] = useState(false);
     const [showSearch, setShowSearch] = useState(false);
@@ -36,7 +36,7 @@ function Nav() {
                 <div className="flex items-center gap-[10px] w-[30%] overflow-hidden px-[10px]
             border-r-[2px] border-gray-400">
                     <FaLocationDot size={25} className=" text-[#ff4d2d]" />
-                    <div className="w-[80%] truncate text-gray-600">{city}</div>
+                    <div className="w-[80%] truncate text-gray-600">{currentCity}</div>
                 </div>
 
                 <div className="w-[80%] flex items-center gap-[10px]">
@@ -55,7 +55,7 @@ function Nav() {
                 <div className="flex items-center gap-[10px] w-[30%] overflow-hidden px-[10px]
             border-r-[2px] border-gray-400">
                     <FaLocationDot size={25} className=" text-[#ff4d2d]" />
-                    <div className="w-[80%] truncate text-gray-600">{city}</div>
+                    <div className="w-[80%] truncate text-gray-600">{currentCity}</div>
                 </div>
 
                 <div className="w-[80%] flex items-center gap-[10px]">
