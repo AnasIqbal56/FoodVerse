@@ -3,22 +3,31 @@ import uploadOnCloudinary from "../utils/cloudinary.js";
 export const createEditShop=async (req,res)=>{
     try{
         const {name,city,state,address}=req.body
+       
         let image;
         if(req.file){
+            console.log(req.file)
             image=await uploadOnCloudinary(req.file.path)
+            console.log(image);
+           
+           
         }
 
         let shop=await Shop.findOne({owner:req.userId})
         if(!shop){
-         const shop=await Shop.create({
-            name,city,state,address,owner:req.userId
+          shop=await Shop.create({
+            name,city,state,address,owner:req.userId , image : image 
         })
+            
         }
         else{
-            const shop=await Shop.findByIdAndUpdate(shop._id,{
-            name,city,state,address,owner:req.userId
+            console.log("else wala")
+            shop=await Shop.findByIdAndUpdate(shop._id,{
+            name,city,state,address,owner:req.userId, image : image
         },{new:true})
+        
         }
+        
         
         await shop.populate("owner")
         return res.status(201).json(shop)

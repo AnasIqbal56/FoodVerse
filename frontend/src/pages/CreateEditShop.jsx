@@ -1,14 +1,17 @@
+import axios from "axios";
 import React, { use } from "react";
 import { IoIosArrowRoundBack } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { FaUtensils } from "react-icons/fa";
 import { useState } from "react";
-
+import { setMyShopData } from "../redux/ownerSlice";
+import { serverUrl } from "../App";
 function CreateEditShop() {
     const navigate = useNavigate(); 
     const { myShopData } = useSelector(state => state.owner);
     const { currentCity, currentState, currentAddress } = useSelector(state => state.user);
+    
 
     const [name,setName]= useState(myShopData?.name || "")
     const [city,setCity]= useState(myShopData?.city || currentCity)
@@ -16,6 +19,9 @@ function CreateEditShop() {
     const [address,setAddress]= useState(myShopData?.address || currentAddress)
     const [frontendImage,setFrontendImage]= useState(myShopData?.image || null)
     const [backendImage, setBackendImage]=useState(null)
+    const dispatch=useDispatch()
+
+
     const handleImage = async (e) => {
         const file = e.target.files[0]
         setBackendImage(file)
@@ -33,9 +39,12 @@ function CreateEditShop() {
             if (backendImage) {
                 formData.append("image",backendImage)   
             }
-            const result = await axios.post(`${serverUrl}/api/shop/create-edit`,formData,{withCredentials:true})
+            const result = await axios.post(`${serverUrl}/api/shop/create-edit`,formData,
+                {withCredentials:true})
+                dispatch(setMyShopData(result.data))
+                console.log(result.data)
         } catch (error) {
-            
+            console.log(error)
         }
         
     }
@@ -50,13 +59,13 @@ function CreateEditShop() {
 
                 <div className="flex flex-col items-center mb-6" >
                 
-                {/* <div className = "bg-orange-100 p-4 rounded-full mb-4">
+                <div className = "bg-orange-100 p-4 rounded-full mb-4">
                     <FaUtensils className="text-[#ff4d2d] w-16 h-16"/>
                 </div>
 
                 <div className="text 3xl font-extrabold text-gray-900">
                     {myShopData ? "Edit Shop" : "Add Shop"}  
-                </div> */}
+                </div> 
                 </div>
 
                 <form className="space-y-5" onSubmit={handleSubmit}>

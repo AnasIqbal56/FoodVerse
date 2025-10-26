@@ -3,9 +3,7 @@ import isAuth from "../middlewares/isAuth.js"
 import multer from "multer"
 import {createEditShop} from "../controllers/shop.controllers.js"
 import {getMyShop} from "../controllers/shop.controllers.js"
-import * as uploadModule from "../middlewares/multer.js"
-const upload = uploadModule.default ?? uploadModule.upload ?? uploadModule.multer ?? uploadModule
-
+import { upload } from "../middlewares/multer.js"
 
 const shopRouter=express.Router()
 
