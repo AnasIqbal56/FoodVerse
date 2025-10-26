@@ -9,6 +9,8 @@ import useGetMyShop from "./hooks/useGetMyShop";
 import { useSelector } from "react-redux";
 import Home from "./pages/Home";
 import CreateEditShop from "./pages/CreateEditShop";
+import AddItem from "./pages/AddItem";
+import EditItem from "./pages/EditItem";
 export const serverUrl = "http://localhost:8000";
 
 function App() {
@@ -24,6 +26,8 @@ function App() {
       <Route path="/forgot-password" element={!userData ? <ForgotPassword /> : <Navigate to="/" />} />
       <Route path="/" element={userData ? <Home /> : <Navigate to={"/signin"} />} />
       <Route path="/create-edit-shop" element={userData ? <CreateEditShop /> : <Navigate to={"/signin"} />} />
+      <Route path="/add-item" element={userData ? <AddItem /> : <Navigate to={"/signin"} />} />
+      <Route path="/edit-item/:itemId" element={userData ? <EditItem /> : <Navigate to={"/signin"} />} />
     </Routes>
   );
 }
