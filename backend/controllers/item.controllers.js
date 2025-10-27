@@ -49,3 +49,18 @@ export const editItem=async (req,res)=>{
         return res.status(500).json({message:`Edit item error ${error}`})
     }
 }
+
+export const getItemById = async (req, res) => {
+    try {
+        const itemId = req.params.itemId
+        const item = await Item.findById
+        if(!item){
+            return res.status(400).json({message:"Item not found"})
+        }
+        return res.status(200).json(item)
+    } catch (error) {
+        return res.status(500).json({message:`get item error ${error}`})
+        
+    }
+    
+}

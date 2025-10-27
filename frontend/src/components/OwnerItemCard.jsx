@@ -24,7 +24,7 @@ function OwnerItemCard({data}){
 
                 <div className='flex items-center gap-2'>
                     <div className='p-2  rounded-full hover:bg-[#ff4d2d]/10  text-[#ff4d2d] cursor-pointer'
-                    onClick={()=>navigate("/edit-item")}>
+                    onClick={()=>navigate(`/edit-item/${data._id}`)}>
                          <FaPen size={16} />
                     </div>
 
