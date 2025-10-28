@@ -8,8 +8,7 @@ const userSlice = createSlice({
         state:null,
         currentState:null,
         currentAddress:null,
-        
-        
+        shopInMyCity:null
 
     },
     reducers:{
@@ -27,12 +26,13 @@ const userSlice = createSlice({
         },
         setCurrentAddress:(state,action)=>{
             state.currentAddress=action.payload
-
-
-        }
+        },
+        setShopsInMyCity:(state,action)=>{
+            state.shopInMyCity=action.payload
+        },
         
     }
 })
 
-export const {setUserData,setCurrentCity,setCurrentState,setCurrentAddress}=userSlice.actions
+export const {setUserData,setCurrentCity,setCurrentState,setCurrentAddress,setShopsInMyCity}=userSlice.actions
 export default userSlice.reducer

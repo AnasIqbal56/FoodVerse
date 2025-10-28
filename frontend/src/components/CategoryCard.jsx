@@ -1,6 +1,6 @@
 import React from "react";
 
-function CategoryCard({ data }) {
+function CategoryCard({ name, image }) {
   return (
     <div
       className="
@@ -17,12 +17,12 @@ function CategoryCard({ data }) {
       "
     >
       <img
-        src={data.image}
-        alt={data.name || "Category"}
+        src={image}
+        alt=""
         className="w-full h-full object-cover transform scale-100 hover:scale-105 transition-transform duration-300"
       />
       <div className="absolute bottom-0 left-0 w-full bg-[#ffffff96] bg-opacity-95 text-gray-800 backdrop-blur px-3 py-1 rounded-t-xl text-center shadow text-sm font-medium">
-        {data.category}
+        {name}
       </div>
     </div>
   );
