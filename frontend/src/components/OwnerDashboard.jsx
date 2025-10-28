@@ -9,6 +9,7 @@ import OwnerItemCard from "./OwnerItemCard";
 function OwnerDashboard() {
   const { myShopData } = useSelector(state => state.owner)
   const navigate = useNavigate()
+  
   return (
     <div className="w-full min-h-screen bd-[#fff9f6] flex flex-col items-center">
       <Nav />

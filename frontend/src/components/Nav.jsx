@@ -10,6 +10,8 @@ import { useSelector } from "react-redux";
 import { RxCross1 } from "react-icons/rx";
 import { FaPlus } from "react-icons/fa6";
 import { LuReceipt } from "react-icons/lu";
+import { useNavigate } from "react-router-dom";
+
 import { use } from "react";
 
 function Nav() {
@@ -18,6 +20,7 @@ function Nav() {
     const [showInfo, setShowInfo] = useState(false);
     const [showSearch, setShowSearch] = useState(false);
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const handleLogout = async () => {
         try {
             const result = await axios.get(`${serverUrl}/api/auth/signout`, { withCredentials: true })
@@ -73,12 +76,15 @@ function Nav() {
 
                 {userData.role == "owner" ? <>
                 {myShopData && <>
-                    <button className="hidden  md:flex items-center gap-1 p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]">
+                    <button className="hidden  md:flex items-center gap-1 p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]"
+                    onClick={() => navigate("/add-item")}>
+                        
                         <FaPlus size={20} />
                         <span>Add Food Item</span>
                     </button>
 
-                    <button className="md:hidden flex items-center p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]">
+                    <button className="md:hidden flex items-center p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]"
+                    onClick={() => navigate("/add-item")}>
                         <FaPlus size={20} />
                     </button>
                     </>}

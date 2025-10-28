@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { use } from "react";
+import React from "react";
 import { IoIosArrowRoundBack } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -7,7 +7,10 @@ import { FaUtensils } from "react-icons/fa";
 import { useState } from "react";
 import { setMyShopData } from "../redux/ownerSlice";
 import { serverUrl } from "../App";
+import ClipLoader from "react-spinners/ClipLoader";
+
 function AddItem() {
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate(); 
     const { myShopData } = useSelector(state => state.owner);
     const [name,setName]= useState("")
@@ -38,6 +41,7 @@ function AddItem() {
     }
     const handleSubmit = async (e) => {
         e.preventDefault()
+        setLoading(true)
         try {
             const formData = new FormData()
             formData.append("name",name)
@@ -50,9 +54,11 @@ function AddItem() {
             const result = await axios.post(`${serverUrl}/api/item/add-item`,formData,
                 {withCredentials:true})
                 dispatch(setMyShopData(result.data))
-                console.log(result.data)
+                setLoading(false)
+                navigate("/")
         } catch (error) {
             console.log(error)
+            setLoading(false)
         }
         
     }
@@ -120,8 +126,9 @@ function AddItem() {
                             <option value="non veg">non veg</option>
                         </select> 
                     </div>
-                    <button className="w-full bg-[#ff4d2d] text-white px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-orange-600 hover:shadow-lg transition-all duration-200 cursor-pointer">
-                        Save
+                    <button className="w-full bg-[#ff4d2d] text-white px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-orange-600 hover:shadow-lg transition-all duration-200 cursor-pointer"
+                    disabled={loading}>
+                        {loading ? <ClipLoader size={20} color="white" /> : "Save" }
                     </button>
                 </form>
 
