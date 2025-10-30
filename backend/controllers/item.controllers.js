@@ -2,7 +2,7 @@ import uploadOnCloudinary from "../utils/cloudinary.js";
 import Shop from "../models/shop.model.js";
 import Item from "../models/item.model.js";
 
-// 🟢 Add item
+// Add item
 export const addItem = async (req, res) => {
   try {
     const { name, category, price, foodType } = req.body;
@@ -36,7 +36,7 @@ export const addItem = async (req, res) => {
   }
 };
 
-// 🟠 Edit item
+//  Edit item
 export const editItem = async (req, res) => {
   try {
     const { itemId } = req.params;
@@ -69,7 +69,7 @@ export const editItem = async (req, res) => {
   }
 };
 
-// 🔵 Get item by ID
+// Get item by ID
 export const getItemById = async (req, res) => {
   try {
     const { itemId } = req.params;
@@ -86,7 +86,7 @@ export const getItemById = async (req, res) => {
   }
 };
 
-// 🔴 Delete item
+// Delete item
 export const deleteItem = async (req, res) => {
   try {
     const { itemId } = req.params; // ✅ Correct destructuring
@@ -101,7 +101,7 @@ export const deleteItem = async (req, res) => {
       return res.status(400).json({ message: "Shop not found" });
     }
 
-    // ✅ remove item ID from shop.items
+    // remove item ID from shop.items
     shop.items = shop.items.filter(
       (i) => i.toString() !== item._id.toString()
     );
