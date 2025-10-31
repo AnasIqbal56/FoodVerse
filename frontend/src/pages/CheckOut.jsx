@@ -8,6 +8,9 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { setLocation, setAddress } from '../redux/mapSlice';
 import axios from 'axios';
+import { MdDeliveryDining } from "react-icons/md";
+import { FaMobileButton } from "react-icons/fa6";
+import { FaCreditCard } from "react-icons/fa";
 
 function ReCenterMap({ location }) {
   const map = useMap();
@@ -23,6 +26,7 @@ function CheckOut() {
   const apiKey = import.meta.env.VITE_GEOAPIKEY;
   const [addressInput, setAddressInput] = useState('');
   const { location, address } = useSelector((state) => state.map);
+  const [paymentMethod, setPaymentMethod] = useState('cod');
 
   const getAddressByLatLng = async (lat, lng) => {
     try {
@@ -127,6 +131,52 @@ function CheckOut() {
               </MapContainer>
             </div>
           </div>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold mb-3 text-gray-800">Payment Method</h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div
+  className={`border p-4 rounded-xl flex items-center gap-3 text-left transition ${
+    paymentMethod === 'cod'
+      ? 'border-orange-500 bg-orange-50 shadow'
+      : 'border-gray-200 hover:border-gray-300'
+  }`} onClick={() => setPaymentMethod('cod')}
+>
+  <span className="inline-flex items-center h-10 w-10 justify-center rounded-full bg-green-100">
+    <MdDeliveryDining className='text-xl text-green-600'/>
+  </span>
+  <div>
+    <p className="font-medium text-gray-800">Cash on Delivery</p>
+    <p className="text-xs text-gray-500">Pay when your food arrives.</p>
+  </div>
+</div>
+
+
+<div
+  className={`border p-4 rounded-xl flex items-center gap-3 text-left transition ${
+    paymentMethod === 'online'
+      ? 'border-orange-500 bg-orange-50 shadow'
+      : 'border-gray-200 hover:border-gray-300'
+  }`} onClick={() => setPaymentMethod('online')}
+>
+  <span className="inline-flex items-center h-10 w-10 justify-center rounded-full bg-purple-100">
+  <FaMobileButton className="text-lg text-purple-600" />
+
+</span>
+  
+<span className="inline-flex items-center h-10 w-10 justify-center rounded-full bg-blue-100">  
+  <FaCreditCard className="text-lg text-blue-600" />
+
+</span>
+  <div>
+    <p className="font-medium text-gray-800">UPI / Credit / Debit </p>
+    <p className="text-xs text-gray-500">Pay securely online.</p>
+  </div>
+</div>
+
+        </div>
         </section>
       </div>
     </div>
