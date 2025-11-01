@@ -1,4 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
+import MyOrders from "../pages/MyOrders";
 
 const userSlice = createSlice({
     name:'user',
@@ -8,10 +9,12 @@ const userSlice = createSlice({
         state:null,
         currentState:null,
         currentAddress:null,
+        //
         shopInMyCity:null,
         itemsInMyCity:null,
         totalAmount:0,
-        cartItems:[]
+        cartItems:[],
+        MyOrders:null
     },
     reducers:{
         setUserData:(state,action)=>{
@@ -36,16 +39,58 @@ const userSlice = createSlice({
             state.itemsInMyCity=action.payload
         },
         addToCart:(state,action)=>{
-            const cartItem = action.payload
-            const existingItem = state.cartItems.find(i=>i.id==cartItem.id)
-            if(existingItem){
-                existingItem.quantity+=cartItem.quantity
+
+
+            const cartItem = { ...action.payload };
+
+            // Normalize case where shop object was passed (unlikely now), but safe
+            if (!cartItem.shopId && cartItem.shop && cartItem.shop._id) {
+                cartItem.shopId = cartItem.shop._id;
             }
-            else{
-                state.cartItems.push(cartItem)
+
+            // final guard: if still missing shopId, do not add
+            if (!cartItem.shopId) {
+                console.error("Tried to add cart item without shopId:", cartItem);
+                return;
             }
-            state.totalAmount=state.cartItems.reduce((sum,i)=>sum+i.price*i.quantity,0)
-            console.log(state.cartItems)
+
+            const existingItem = state.cartItems.find(i => i.id === cartItem.id);
+
+            if (existingItem) {
+                existingItem.quantity += cartItem.quantity;
+            } else {
+                // store a flat object, do not keep nested shop objects
+                state.cartItems.push({
+                id: cartItem.id,
+                name: cartItem.name,
+                price: cartItem.price,
+                image: cartItem.image,
+                quantity: cartItem.quantity,
+                foodType: cartItem.foodType,
+                shopId: cartItem.shopId
+                });
+            }
+
+            state.totalAmount = state.cartItems.reduce((sum, i) => sum + Number(i.price) * Number(i.quantity), 0);
+            // helpful debug output
+            console.log("cartItems updated:", state.cartItems);
+
+
+            // const cartItem = action.payload
+
+            // const existingItem = state.cartItems.find(i=>i.id==cartItem.id)
+            // if(existingItem){
+            //     existingItem.quantity+=cartItem.quantity
+            // }
+            // else{
+            //       state.cartItems.push({
+            //         ...cartItem,
+            //         shopId: cartItem.shopId
+            //         });
+            //     //state.cartItems.push(cartItem)
+            // }
+            // state.totalAmount=state.cartItems.reduce((sum,i)=>sum+i.price*i.quantity,0)
+            // console.log(state.cartItems)
         },
         updateQuantity:(state,action)=>{
             const {id,quantity}= action.payload
@@ -59,9 +104,13 @@ const userSlice = createSlice({
             state.cartItems = state.cartItems.filter(i => i.id !== action.payload);
             state.totalAmount=state.cartItems.reduce((sum,i)=>sum+i.price*i.quantity,0)
         },
+
+        setMyOrders:(state,action)=>{
+            state.myOrders=action.payload
+        }
     }
 })
 
 export const {setUserData,setCurrentCity,setCurrentState,setCurrentAddress,
-setShopsInMyCity,setItemsInMyCity,addToCart,updateQuantity,removeCartItem}=userSlice.actions
+setShopsInMyCity,setItemsInMyCity,addToCart,updateQuantity,removeCartItem,setMyOrders}=userSlice.actions
 export default userSlice.reducer

@@ -15,7 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { use } from "react";
 
 function Nav() {
-    const { userData, currentCity,cartItems } = useSelector(state => state.user);
+    const { userData, currentCity, cartItems } = useSelector(state => state.user);
     const { myShopData } = useSelector(state => state.owner);
     const [showInfo, setShowInfo] = useState(false);
     const [showSearch, setShowSearch] = useState(false);
@@ -75,18 +75,18 @@ function Nav() {
                         onClick={() => setShowSearch(true)} />)}
 
                 {userData.role == "owner" ? <>
-                {myShopData && <>
-                    <button className="hidden  md:flex items-center gap-1 p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]"
-                    onClick={() => navigate("/add-item")}>
-                        
-                        <FaPlus size={20} />
-                        <span>Add Food Item</span>
-                    </button>
+                    {myShopData && <>
+                        <button className="hidden  md:flex items-center gap-1 p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]"
+                            onClick={() => navigate("/add-item")}>
 
-                    <button className="md:hidden flex items-center p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]"
-                    onClick={() => navigate("/add-item")}>
-                        <FaPlus size={20} />
-                    </button>
+                            <FaPlus size={20} />
+                            <span>Add Food Item</span>
+                        </button>
+
+                        <button className="md:hidden flex items-center p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]"
+                            onClick={() => navigate("/add-item")}>
+                            <FaPlus size={20} />
+                        </button>
                     </>}
 
                     <div className="hidden md:flex item-center gap-2 cursor-pointer relative px-3 py-1 rounded-lg
@@ -96,7 +96,7 @@ function Nav() {
                         <span className="absolute -right-2 -top-2 text-xs font-bold text-white 
                         bg-[#ff4d2d] rounded-full px-[6px] py-[1px]">0</span>
                     </div>
-                     <div className="md:hidden flex item-center gap-2 cursor-pointer relative px-3 py-1 rounded-lg
+                    <div className="md:hidden flex item-center gap-2 cursor-pointer relative px-3 py-1 rounded-lg
                     bg-[#ff4d2d]/10 text-[#ff4d2d] font-medium">
                         <LuReceipt size={20} />
                         <span className="absolute -right-2 -top-2 text-xs font-bold text-white 
@@ -105,7 +105,7 @@ function Nav() {
 
                 </> : (
                     <>
-                        {userData.role == "user" && <div className="relative cursor-pointer" onClick={()=>navigate("/cart")}>
+                        {userData.role == "user" && <div className="relative cursor-pointer" onClick={() => navigate("/cart")}>
                             <IoCartOutline size={25} className="text-[#ff4d2d]" />
                             <span className="absolute right-[-9px] top-[-12px] text-[#ff4d2d]">{cartItems.length}</span>
                         </div>}

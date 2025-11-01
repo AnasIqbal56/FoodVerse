@@ -72,15 +72,43 @@ const handleDecrease= ()=>{
 
     </button>
     <button className={`${cartItems.some(i=>i.id==data._id)?"bg-gray-800":"bg-[#ff4d2d]"} text-white px-3 py-2 transition-colors `}
-     onClick={()=>{
-        quantity>0?dispatch(addToCart({
-            id:data._id,
-            name:data.name,
-            price:data.price,
-            image:data.image,
-            quantity,
-            foodType:data.foodType
-        })):null}}>
+    //  onClick={()=>{
+    //     quantity>0?dispatch(addToCart({
+    //         id:data._id,
+    //         name:data.name,
+    //         price:data.price,
+    //         image:data.image,
+    //         quantity,
+    //         //
+    //         shopId: data.shop?._id || data.shopId || data.shop,
+    //         foodType:data.foodType
+    //     })):null}}
+
+    onClick={() => {
+    if (quantity <= 0) return;
+
+    // Normalize shopId: supports cases where data.shop is an object, a string, or data.shopId exists
+    const shopId = data.shop?._id || data.shopId || (typeof data.shop === 'string' ? data.shop : undefined);
+
+    if (!shopId) {
+        // Developer-friendly log — item is missing shop info
+        console.error("Cannot add to cart — missing shopId on item:", data);
+        // Optionally show user message (toast) here
+        return;
+    }
+
+    dispatch(addToCart({
+        id: data._id,
+        name: data.name,
+        price: data.price,
+        image: data.image,
+        quantity,
+        foodType: data.foodType,
+        shopId, // <<-- guaranteed
+    }));
+    }}
+
+    >
     <FaShoppingCart size={16}/>
     </button>
     </div>
