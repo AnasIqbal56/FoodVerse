@@ -106,7 +106,7 @@ const userSlice = createSlice({
         },
 
         setMyOrders:(state,action)=>{
-            state.myOrders=action.payload
+            state.MyOrders=action.payload
         }
     }
 })
