@@ -85,7 +85,7 @@ function CheckOut() {
         totalAmount,
         cartItems
       },{withCredentials:true})
-      console.log("Order Placed Successfully",result.data)
+      dispatch(addMyOrder(result.data))
       navigate("/order-placed")
 
     }catch(error){ 
