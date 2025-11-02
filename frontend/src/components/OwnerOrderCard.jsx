@@ -6,34 +6,33 @@ import { updateOrderStatus } from "../redux/userSlice";
 import { useDispatch } from "react-redux";
 
 function OwnerOrderCard({ data }) {
-  const [availableBoys, setAvailableBoys]=useState([])
+  const [availableBoys, setAvailableBoys] = useState([]);
   const dispatch = useDispatch();
 
   const shopOrder = data?.shopOrders;
-  const [status, setStatus] = useState(shopOrder?.status);
+  const [status, setStatus] = useState(shopOrder?.status || "");
 
   // Handle status change
-const handleUpdateStatus = async (orderId, shopId, newStatus) => {
-  try {
-    const result = await axios.post(
-      `${serverUrl}/api/order/update-status/${orderId}/${shopId}`,
-      { status: newStatus },
-      { withCredentials: true }
-    );
+  const handleUpdateStatus = async (orderId, shopId, newStatus) => {
+    try {
+      const response = await axios.post(
+        `${serverUrl}/api/order/update-status/${orderId}/${shopId}`,
+        { status: newStatus },
+        { withCredentials: true }
+      );
 
-    setStatus(newStatus);
-    dispatch(updateOrderStatus({ orderId, shopId, status: newStatus }));
+      setStatus(newStatus);
+      dispatch(updateOrderStatus({ orderId, shopId, status: newStatus }));
 
-    if (result.data?.availableBoys) {
-      setAvailableBoys(result.data.availableBoys);
+      if (response.data?.availableBoys) {
+        setAvailableBoys(response.data.availableBoys);
+      }
+
+      console.log("Order status updated:", response.data);
+    } catch (error) {
+      console.log("Error updating order:", error);
     }
-
-    console.log("Order status updated:", result.data);
-  } catch (error) {
-    console.log("Error updating order:", error);
-  }
-};
-
+  };
 
   return (
     <div className="bg-white rounded-lg shadow p-4 space-y-4">
@@ -94,7 +93,7 @@ const handleUpdateStatus = async (orderId, shopId, newStatus) => {
         <select
           className="rounded-md border px-3 py-1 text-sm focus:outline-none focus:ring-2 border-[#ff4d2d] text-[#ff4d2d]"
           onChange={(e) =>
-            handleUpdateStatus(data._id, shopOrder.shop._id, e.target.value)
+            handleUpdateStatus(data._id, shopOrder?.shop?._id, e.target.value)
           }
         >
           <option value="">Change</option>
@@ -104,6 +103,22 @@ const handleUpdateStatus = async (orderId, shopId, newStatus) => {
           <option value="delivered">Delivered</option>
         </select>
       </div>
+
+      {/* AVAILABLE BOYS */}
+      {status === "out of delivery" && (
+        <div className="mt-3 p-2 border rounded-lg text-sm bg-orange-50">
+          <p>Available Delivery Boys:</p>
+          {availableBoys.length > 0 ? (
+            availableBoys.map((b, index) => (
+              <div className="text-gray-500" key={index}>
+                {b.fullName} - {b.mobile}
+              </div>
+            ))
+          ) : (
+            <div>Waiting for delivery boys to accept</div>
+          )}
+        </div>
+      )}
 
       {/* TOTAL */}
       <div className="text-right font-bold text-gray-800 text-sm">

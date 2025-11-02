@@ -118,7 +118,6 @@ function Nav() {
               </>
             )}
 
-            {/* ✅ Fixed onClick case here */}
             <div
               className="hidden md:flex items-center gap-2 cursor-pointer relative px-3 py-1 rounded-lg
               bg-[#ff4d2d]/10 text-[#ff4d2d] font-medium"
@@ -182,8 +181,9 @@ function Nav() {
 
         {showInfo && (
           <div
-            className="fixed top-[80px] right-[80px] md:right-[10%] lg:right-[25%]
-            w-[180px] bg-white shadow-2xl rounded-xl p-[20px] flex flex-col gap-[10px] z-[9999]"
+            className={`fixed top-[80px] right-[80px] 
+              ${userData?.role === "deliveryBoy" ? "md:right-[20%] lg:right-[40%]" : "md:right-[10%] lg:right-[25%]"}
+               w-[180px] bg-white shadow-2xl rounded-xl p-[20px] flex flex-col gap-[10px] z-[9999]`}
           >
             <div className="text-[17px] font-semibold">
               {userData?.fullName ?? "User"}
