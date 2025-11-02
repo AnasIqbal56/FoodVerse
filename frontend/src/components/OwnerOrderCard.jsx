@@ -13,21 +13,27 @@ function OwnerOrderCard({ data }) {
   const [status, setStatus] = useState(shopOrder?.status);
 
   // Handle status change
-  const handleUpdateStatus = async (orderId, shopId, newStatus) => {
-    try {
-      await axios.post(
-        `${serverUrl}/api/order/update-status/${orderId}/${shopId}`,
-        { status: newStatus },
-        { withCredentials: true }
-      );
-      setStatus(newStatus);
-      dispatch(updateOrderStatus({ orderId, shopId, status: newStatus }));
-      setAvailableBoys(result.data.availableBoys)
-      console.log(result.data)
-    } catch (error) {
-      console.log("Error updating order:", error);
+const handleUpdateStatus = async (orderId, shopId, newStatus) => {
+  try {
+    const result = await axios.post(
+      `${serverUrl}/api/order/update-status/${orderId}/${shopId}`,
+      { status: newStatus },
+      { withCredentials: true }
+    );
+
+    setStatus(newStatus);
+    dispatch(updateOrderStatus({ orderId, shopId, status: newStatus }));
+
+    if (result.data?.availableBoys) {
+      setAvailableBoys(result.data.availableBoys);
     }
-  };
+
+    console.log("Order status updated:", result.data);
+  } catch (error) {
+    console.log("Error updating order:", error);
+  }
+};
+
 
   return (
     <div className="bg-white rounded-lg shadow p-4 space-y-4">
