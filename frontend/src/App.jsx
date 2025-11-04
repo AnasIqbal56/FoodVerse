@@ -19,6 +19,8 @@ import CheckOut from "./pages/CheckOut";
 import OrderPlaced from "./pages/OrderPlaced";
 import MyOrders from "./pages/MyOrders";
 import useUpdateLocation from "./hooks/useUpdateLocation";
+import TrackOrderPage from "./pages/trackOrderPage.jsx";
+
 
 export const serverUrl = "http://localhost:8000";
 
@@ -46,6 +48,7 @@ function App() {
        <Route path="/checkout" element={userData ? <CheckOut /> : <Navigate to={"/signin"} />} />
        <Route path="/order-placed" element={userData ? <OrderPlaced /> : <Navigate to={"/signin"} />} />
        <Route path="/my-orders" element={userData ? <MyOrders/> : <Navigate to={"/signin"} />} />
+      <Route path="/track-order/:orderId" element={userData ? <TrackOrderPage /> : <Navigate to={"/signin"} />} />
     </Routes>
   );
 }
