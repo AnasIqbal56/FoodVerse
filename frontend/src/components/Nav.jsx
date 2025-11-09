@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useDispatch, useSelector } from "react-redux";
 import { serverUrl } from "../App";
@@ -17,6 +17,7 @@ function Nav() {
   const [showSearch, setShowSearch] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [query, setQuery] = useState("");
 
   const handleLogout = async () => {
     try {
@@ -27,6 +28,27 @@ function Nav() {
     }
   };
 
+    const handleSearchItems = async () => {
+      try {
+        const result = await axios.get(
+          `${serverUrl}/api/item/search-items?query=${query}&city=${currentCity}`,
+          {withCredentials:true});  
+          dispatch(setSearchItems(result.data))    
+    } catch (error) {
+        console.log(error)
+        
+      }
+  
+      
+    }
+
+    useEffect(() => {
+      if(query){
+      handleSearchItems()}
+      else{
+        dispatch(setSearchItems(null))
+      }
+    },[query])
   return (
     <div
       className="w-full h-[80px] flex items-center justify-between md:justify-center
@@ -50,7 +72,9 @@ function Nav() {
             <input
               type="text"
               placeholder="Search delicious food"
-              className="px-[10px] text-gray-700 outline-0 w-full"
+              className="px-[10px] text-gray-700 outline-0 w-full" onChange=
+              {(e)=>setQuery(e.target.value)} value={query}
+      
             />
           </div>
         </div>
@@ -75,9 +99,8 @@ function Nav() {
             <FaSearch size={25} className="text-[#ff4d2d]" />
             <input
               type="text"
-              placeholder="Search delicious food"
-              className="px-[10px] text-gray-700 outline-0 w-full"
-            />
+              placeholder="Search Delicious Food"
+              className="px-[10px] text-gray-700 outline-0 w-full"       />
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 import React from "react";
 
-function CategoryCard({ name, image }) {
+function CategoryCard({ name, image ,onClick}) {
   return (
     <div
       className="
@@ -14,8 +14,7 @@ function CategoryCard({ name, image }) {
         shadow-xl shadow-gray-200 
         hover:shadow-lg 
         transition-shadow relative
-      "
-    >
+      " onClick={onClick}>
       <img
         src={image}
         alt=""

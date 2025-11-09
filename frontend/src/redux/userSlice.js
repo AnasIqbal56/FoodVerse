@@ -1,5 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 import MyOrders from "../pages/MyOrders";
+import { set } from "mongoose";
 
 const userSlice = createSlice({
     name:'user',
@@ -15,6 +16,7 @@ const userSlice = createSlice({
         totalAmount:0,
         cartItems:[],
         myOrders:[],
+        searchItems:null,
     },
     reducers:{
         setUserData:(state,action)=>{
@@ -124,11 +126,13 @@ const userSlice = createSlice({
             }
         },
 
-
+        setSearchItems:(state,action)=>{
+            state.searchItems=action.payload
+        }
     }
 })
 
 export const {setUserData,setCurrentCity,setCurrentState,setCurrentAddress,
         addMyOrder,
-setShopsInMyCity,setItemsInMyCity,addToCart,updateQuantity,removeCartItem,setMyOrders,updateOrderStatus}=userSlice.actions
+setShopsInMyCity,setItemsInMyCity,addToCart,updateQuantity,removeCartItem,setMyOrders,updateOrderStatus,setSearchItems}=userSlice.actions
 export default userSlice.reducer
