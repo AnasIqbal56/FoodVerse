@@ -9,6 +9,7 @@ import { IoCartOutline } from "react-icons/io5";
 import { RxCross1 } from "react-icons/rx";
 import { LuReceipt } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
+import { setSearchItems } from "../redux/userSlice";
 
 function Nav() {
   const { userData, currentCity, cartItems } = useSelector((state) => state.user);
@@ -18,6 +19,9 @@ function Nav() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  
+
+
 
   const handleLogout = async () => {
     try {
