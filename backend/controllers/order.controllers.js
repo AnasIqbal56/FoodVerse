@@ -63,6 +63,29 @@ export const placeOrder = async (req, res) => {
 
     await newOrder.populate("shopOrders.shopOrderItems.item", "name image price");
     await newOrder.populate("shopOrders.shop", "name");
+    await newOrder.populate("shopOrders.owner", "name socketId");
+    await newOrder.populate("user", "name email mobile");
+
+    const io = req.app.get('io')
+
+    if (io) {
+      newOrder.shopOrders.forEach(shopOrder => {
+        const ownerSocketId = shopOrder.owner.socketId
+        if (ownerSocketId) {
+          io.to(ownerSocketId).emit('newOrder', {
+            _id: newOrder._id,
+            paymentMethod: newOrder.paymentMethod,
+            user: newOrder.user,
+            shopOrders: shopOrder,
+            createdAt: newOrder.createdAt,
+            deliveryAddress: newOrder.deliveryAddress,
+            payment: newOrder.payment
+          })
+        }
+
+
+      })
+    }
 
     return res.status(201).json(newOrder);
   } catch (error) {
@@ -179,6 +202,16 @@ export const updateOrderStatus = async (req, res) => {
     const updatedShopOrder = order.shopOrders.find(o => o.shop.toString() === shopId);
     await order.populate("shopOrders.shop", "name");
     await order.populate("shopOrders.assignedDeliveryBoy", "fullName email mobile");
+    await order.populate("user", "socketId");
+
+    const io=req.app.get('io')
+    if(io){
+      const userSocketId=order.user.socketId
+      if(userSocketId){
+        io.to(userSocketId).emit('update-status',)
+      }
+
+    }
 
 
 
@@ -384,7 +417,7 @@ export const sendDeliveryOtp = async (req, res) => {
 
     return res.status(500).json({ message: `send delivery otp error: ${error}` });
   }
-} 
+}
 export const verifyDeliveryOtp = async (req, res) => {
   try {
     const { orderId, shopOrderId, otp } = req.body
@@ -403,7 +436,7 @@ export const verifyDeliveryOtp = async (req, res) => {
     await order.save()
     await DeliveryAssignment.deleteOne(
       {
-        order: order._id, 
+        order: order._id,
         shopOrder: shopOrder._id,
         assignedTo: shopOrder.assignedDeliveryBoy
 

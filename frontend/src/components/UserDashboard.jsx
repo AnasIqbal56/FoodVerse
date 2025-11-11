@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, use } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
 import CategoryCard from "./CategoryCard.jsx";
 import { categories } from "../category.js";
@@ -16,7 +16,6 @@ function UserDashboard() {
   console.log("Search Items in Dashboard:", searchItems);
   const cateScrollRef = useRef();
   const shopScrollRef = useRef();
-  const navigate = useNavigate();
   const [showLeftCateButton, setShowLeftCateButton] = useState(false);
   const [showRightCateButton, setShowRightCateButton] = useState(false);
   const [showLeftShopButton, setShowLeftShopButton] = useState(false);
@@ -57,29 +56,28 @@ useEffect(() => {
     }
   };
 
-
   useEffect(() => {
-  const el = cateScrollRef.current;
-  const e2 = shopScrollRef.current;
-  if (!el || !e2) return;
+    const el = cateScrollRef.current;
+    const e2 = shopScrollRef.current;
+    if (!el || !e2) return;
 
-  const handleScroll = () => {
+    const handleScroll = () => {
+      updateButton(cateScrollRef, setShowLeftCateButton, setShowRightCateButton);
+      updateButton(shopScrollRef, setShowLeftShopButton, setShowRightShopButton);
+    };
+
+    el.addEventListener("scroll", handleScroll);
+    e2.addEventListener("scroll", handleScroll);
+
+    // Initial button update
     updateButton(cateScrollRef, setShowLeftCateButton, setShowRightCateButton);
     updateButton(shopScrollRef, setShowLeftShopButton, setShowRightShopButton);
-  };
 
-  el.addEventListener("scroll", handleScroll);
-  e2.addEventListener("scroll", handleScroll);
-
-  // Initial button update
-  updateButton(cateScrollRef, setShowLeftCateButton, setShowRightCateButton);
-  updateButton(shopScrollRef, setShowLeftShopButton, setShowRightShopButton);
-
-  return () => {
-    el.removeEventListener("scroll", handleScroll);
-    e2.removeEventListener("scroll", handleScroll);
-  };
-}, [categories]);
+    return () => {
+      el.removeEventListener("scroll", handleScroll);
+      e2.removeEventListener("scroll", handleScroll);
+    };
+  }, [categories]);
 
 
   return (
@@ -119,8 +117,7 @@ useEffect(() => {
             ref={cateScrollRef}
           >
             {categories.map((cate, index) => (
-              <CategoryCard name={cate.category} image= {cate.image} key={index} 
-              onClick={() => handleFilterByCategory(cate.category)}/>
+              <CategoryCard name={cate.category} image={cate.image} key={index} />
             ))}
           </div>
 
@@ -135,7 +132,7 @@ useEffect(() => {
         </div>
       </div>
       <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-[10px]">
-        <h1 className="text-gray-800 text-2xl sm:text-3xl"> Best Shop in {currentCity  || "Karachi"}</h1>
+        <h1 className="text-gray-800 text-2xl sm:text-3xl"> Best Shop in {currentCity || "Karachi"}</h1>
         <div className="w-full relative">
           {showLeftShopButton && (
             <button
@@ -148,10 +145,10 @@ useEffect(() => {
 
           <div
             className="w-full flex overflow-x-auto gap-4 py-2 scroll-smooth"
-            ref={shopScrollRef}>
+            ref={shopScrollRef}
+          >
             {shopInMyCity?.map((shop, index) => (
-              <CategoryCard name={shop.name} image={shop.image} key={index}  
-             onClick={() => navigate(`/shop/${shop._id}`)} />
+              <CategoryCard name={shop.name} image={shop.image} key={index} />
             ))}
           </div>
 
@@ -170,15 +167,17 @@ useEffect(() => {
         <h1 className="text-gray-800 text-2xl sm:text-3xl">
           Suggested Food Items
         </h1>
-          <div className="w-full h-auto flex flex-wrap gap-[20px] justify-center">
-          {updatedItemsList?.map((item, index) => (
-            <FoodCard key={index} data={item}  />
+        <div className="w-full h-auto flex flex-wrap gap-[20px] justify-center">
+          {itemsInMyCity?.map((item, index) => (
+            <FoodCard key={index} data={item} />
           ))}
-          </div>  
+        </div>
       </div>
-     
+
     </div>
   );
 }
+
+
 
 export default UserDashboard;

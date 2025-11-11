@@ -42,6 +42,9 @@ const userSlice = createSlice({
          setItemsInMyCity:(state,action)=>{
             state.itemsInMyCity=action.payload
         },
+         setSocket:(state,action)=>{
+            state.socket=action.payload
+        },
         addToCart:(state,action)=>{
 
 
@@ -136,5 +139,6 @@ const userSlice = createSlice({
 
 export const {setUserData,setCurrentCity,setCurrentState,setCurrentAddress,
         addMyOrder,
-setShopsInMyCity,setItemsInMyCity,addToCart,updateQuantity,removeCartItem,setMyOrders,updateOrderStatus,setSearchItems}=userSlice.actions
+setShopsInMyCity,setItemsInMyCity,addToCart,updateQuantity,
+removeCartItem,setMyOrders,updateOrderStatus,setSearchItems,setSocket}=userSlice.actions
 export default userSlice.reducer
