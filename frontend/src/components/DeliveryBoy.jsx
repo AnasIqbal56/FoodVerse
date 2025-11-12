@@ -4,8 +4,9 @@ import { useSelector } from "react-redux";
 import DeliveryBoyTracking from "./DeliveryBoyTracking";
 import axios from "axios";
 
+
 function DeliveryBoy() {
-  const { userData } = useSelector((state) => state.user);
+  const { userData, socket } = useSelector((state) => state.user);
   const [currentOrder, setCurrentOrder] = useState();
   const [availableAssignments, setAvailableAssignments] = useState([]);
   const [otp, setOtp] = useState("");
@@ -74,6 +75,20 @@ function DeliveryBoy() {
       console.log(error);
     }
   }; 
+
+  useEffect (() => {
+    socket?.on('newAssignment',(data)=>{
+      if (String(data.sentTo) === String(userData._id)) {
+
+        setAvailableAssignments(prev => [...prev, data])
+
+      }
+    })
+
+    return ()=>{
+      socket?.off('newAssignment')
+    }
+  }, [socket]);
 
   useEffect(() => {
     if (userData?._id) {

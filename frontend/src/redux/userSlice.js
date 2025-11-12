@@ -113,23 +113,37 @@ const userSlice = createSlice({
         },
 
         setMyOrders:(state,action)=>{
-            state.MyOrders=action.payload
+            state.myOrders=action.payload
         },
 
         addMyOrder: (state,action)=>{
             state.myOrders=[action.payload,...state.myOrders]
         },
 
-        updateOrderStatus: (state,action)=>{
-            
-            const {orderId,shopId,status}= action.payload
-            const order=state.myOrders.find(o=>o._id==order.id)
-            if (order) {
-                if (order.shopOrders && order.shopOrders.shop._id==shopId) {
-                    order.shopOrders.status=status
-                }
-            }
-        },
+        updateOrderStatus: (state, action) => {
+    const { orderId, shopId, status } = action.payload;
+    // find the order by orderId
+    const order = state.myOrders.find(o => o._id === orderId);
+    if (order) {
+        const shopOrder = order.shopOrders.find(so => so.shop._id === shopId);
+        if (shopOrder) {
+            shopOrder.status = status;
+        }
+    }
+},
+
+
+       updateRealTimeOrderStatus: (state, action) => {
+    const { orderId, shopId, status } = action.payload;
+    const order = state.myOrders.find(o => o._id === orderId);
+    if (order) {
+        const shopOrder = order.shopOrders.find(so => so.shop._id === shopId);
+        if (shopOrder) {
+            shopOrder.status = status;
+        }
+    }
+},
+
 
         setSearchItems:(state,action)=>{
             state.searchItems=action.payload 
@@ -140,5 +154,5 @@ const userSlice = createSlice({
 export const {setUserData,setCurrentCity,setCurrentState,setCurrentAddress,
         addMyOrder,
 setShopsInMyCity,setItemsInMyCity,addToCart,updateQuantity,
-removeCartItem,setMyOrders,updateOrderStatus,setSearchItems,setSocket}=userSlice.actions
+removeCartItem,setMyOrders,updateOrderStatus,setSearchItems,setSocket,updateRealTimeOrderStatus}=userSlice.actions
 export default userSlice.reducer

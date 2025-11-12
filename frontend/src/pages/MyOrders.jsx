@@ -5,26 +5,32 @@ import { useNavigate } from "react-router-dom";
 import UserOrderCard from "../components/UserOrderCard";
 import OwnerOrderCard from "../components/OwnerOrderCard";
 import { setMyOrders } from "../redux/userSlice";
+import { updateRealTimeOrderStatus } from "../redux/userSlice";
+
 
 function MyOrders() {
-  const { userData, MyOrders, socket } = useSelector((state) => state.user);
+  const { userData, myOrders, socket } = useSelector((state) => state.user);
   const navigate = useNavigate();
-  const dispatch=useDispatch()
+  const dispatch = useDispatch();
 
-  useEffect(()=>{
-    socket?.on('newOrder',(data)=>{
-        if(data.shopOrder.owner._id==userData._id){
-            dispatch(setMyOrders([data,...MyOrders]))
-        }
+  useEffect(() => {
+    socket?.on("newOrder", (data) => {
+      if (data.shopOrder.owner._id === userData._id) {
+        dispatch(setMyOrders([data, ...myOrders]));
+      }
+    });
 
-    })
+    socket?.on("update-status", ({ orderId, shopId, status, userId }) => {
+      if (userId === userData._id) {
+        dispatch(updateRealTimeOrderStatus({ orderId, shopId, status }));
+      }
+    });
 
-    return ()=>{
-        socket?.off('newOrder')
-    }
-
-  },[socket])
-
+    return () => {
+      socket?.off("newOrder");
+      socket?.off("update-status");
+    };
+  }, [socket, myOrders, userData, dispatch]);
 
   return (
     <div className="w-full min-h-screen flex justify-center bg-[#fff9f6] px-4">
@@ -37,7 +43,7 @@ function MyOrders() {
         </div>
 
         <div className="space-y-6">
-          {(MyOrders || []).map((order, index) => (
+          {(myOrders || []).map((order, index) => (
             <div key={index}>
               {userData?.role === "user" ? (
                 <UserOrderCard data={order} />
