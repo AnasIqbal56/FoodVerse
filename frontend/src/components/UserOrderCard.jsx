@@ -71,7 +71,7 @@ function UserOrderCard({ data }) {
 
             <div className="flex justify-between items-center border-t pt-2">
               <p className="text-sm font-medium text-gray-700">
-                Subtotal: ₹{shopOrder?.subtotal || shopOrder?.subTotal || 0}
+                Subtotal: RS {shopOrder?.subtotal || shopOrder?.subTotal || 0}
               </p>
               <p className="text-sm font-medium text-blue-600 capitalize">
                 {shopOrder?.status || "pending"}

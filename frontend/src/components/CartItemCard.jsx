@@ -26,10 +26,10 @@ function CartItemCard({ data }) {
         <div>
           <h1 className="font-medium text-gray-800">{data.name}</h1>
           <p className="text-sm text-gray-500">
-            ₹{data.price} x {data.quantity}
+            RS {data.price} x {data.quantity}
           </p>
           <p className="font-bold text-gray-900">
-            ₹{data.price * data.quantity}
+            RS {data.price * data.quantity}
           </p>
         </div>
       </div>

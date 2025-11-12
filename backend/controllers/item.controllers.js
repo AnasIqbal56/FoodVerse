@@ -160,9 +160,11 @@ export const searchItems= async (req,res) => {
   try {
 
     const {query,city}=req.query
-    if(!query||!city){
-      return null
-    }
+    if (!query || !city) {
+  return res.status(400).json({ message: "Missing query or city" });
+}
+
+    
     const shops = await Shop.find({
       city:{$regex:new RegExp(`^${city}$`,"i")}
     }).populate('items')

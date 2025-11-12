@@ -37,7 +37,8 @@ function Nav() {
         const result = await axios.get(
           `${serverUrl}/api/item/search-items?query=${query}&city=${currentCity}`,
           {withCredentials:true});  
-          dispatch(setSearchItems(result.data))    
+          dispatch(setSearchItems(result.data.items || []));
+   
     } catch (error) {
         console.log(error)
         

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect,use } from "react";
 import Nav from "../components/Nav.jsx";
 import CategoryCard from "./CategoryCard.jsx";
 import { categories } from "../category.js";
@@ -16,6 +16,7 @@ function UserDashboard() {
   console.log("Search Items in Dashboard:", searchItems);
   const cateScrollRef = useRef();
   const shopScrollRef = useRef();
+  const navigate = useNavigate();
   const [showLeftCateButton, setShowLeftCateButton] = useState(false);
   const [showRightCateButton, setShowRightCateButton] = useState(false);
   const [showLeftShopButton, setShowLeftShopButton] = useState(false);
@@ -117,7 +118,7 @@ useEffect(() => {
             ref={cateScrollRef}
           >
             {categories.map((cate, index) => (
-              <CategoryCard name={cate.category} image={cate.image} key={index} />
+              <CategoryCard name={cate.category} image={cate.image} key={index} onClick={()=>handleFilterByCategory(cate.category)} />
             ))}
           </div>
 
@@ -132,7 +133,7 @@ useEffect(() => {
         </div>
       </div>
       <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-[10px]">
-        <h1 className="text-gray-800 text-2xl sm:text-3xl"> Best Shop in {currentCity || "Karachi"}</h1>
+        <h1 className="text-gray-800 text-2xl sm:text-3xl"> Best Shop in {currentCity}</h1>
         <div className="w-full relative">
           {showLeftShopButton && (
             <button
@@ -148,7 +149,7 @@ useEffect(() => {
             ref={shopScrollRef}
           >
             {shopInMyCity?.map((shop, index) => (
-              <CategoryCard name={shop.name} image={shop.image} key={index} />
+              <CategoryCard name={shop.name} image={shop.image} key={index}  onClick={() => navigate(`/shop/${shop._id}`)}/>
             ))}
           </div>
 
@@ -168,7 +169,7 @@ useEffect(() => {
           Suggested Food Items
         </h1>
         <div className="w-full h-auto flex flex-wrap gap-[20px] justify-center">
-          {itemsInMyCity?.map((item, index) => (
+          {updatedItemsList?.map((item, index) => (
             <FoodCard key={index} data={item} />
           ))}
         </div>

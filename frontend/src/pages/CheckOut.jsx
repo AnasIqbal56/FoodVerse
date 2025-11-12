@@ -213,7 +213,7 @@ function CheckOut() {
                   <div key={index} className='flex justify-between text-sm text-gray-700'>
 
                     <span>{item.name} x {item.quantity}</span>
-                    <span>₹{item.price*item.quantity}</span>
+                    <span>RS{item.price*item.quantity}</span>
                   
                   </div>
 

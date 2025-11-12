@@ -21,7 +21,7 @@ function SignIn() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // 🧩 Normal email/password sign-in
+  // Normal email/password sign-in
   const handleSignIn = async () => {
     setLoading(true);
     try {
@@ -31,17 +31,17 @@ function SignIn() {
         { withCredentials: true }
       );
 
-      dispatch(setUserData(data)); // ✅ Save user in Redux
+      dispatch(setUserData(data));
       setErr("");
       setLoading(false);
-      navigate("/"); // ✅ Redirect immediately to homepage
+      navigate("/"); 
     } catch (error) {
       setErr(error?.response?.data?.message || "Sign in failed");
       setLoading(false);
     }
   };
 
-  // 🧩 Google authentication
+  //  Google authentication
   const handleGoogleAuth = async () => {
     try {
       const provider = new GoogleAuthProvider();
