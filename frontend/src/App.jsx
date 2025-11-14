@@ -22,6 +22,7 @@ import useUpdateLocation from "./hooks/useUpdateLocation";
 import TrackOrderPage from "./pages/TrackOrderPage.jsx";
 import Shop from "./pages/Shop.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
+import AIWorld from "./pages/AIWorld.jsx";
 
 export const serverUrl = "http://localhost:8000";
 
@@ -96,6 +97,9 @@ function App() {
         path="/shop/:shopId"
         element={userData ? <Shop /> : <Navigate to="/signin" />}
       />
+       <Route path="/ai-world" 
+       element={<AIWorld />} 
+       />
     </Routes>
   );
 }
