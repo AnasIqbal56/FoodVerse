@@ -106,12 +106,14 @@ function DeliveryBoy() {
           <h1 className="text-xl font-bold text-[#ff4d2d]">
             Welcome, {userData.fullName}
           </h1>
-          <p className="text-[#ff4d2d]">
+
+          // sir said dont show location of delivery boy
+          {/* <p className="text-[#ff4d2d]">
             <span className="font-bold">Latitude: </span>
             {userData.location.coordinates[1]},{" "}
             <span className="font-bold">Longitude: </span>
             {userData.location.coordinates[0]}
-          </p>
+          </p> */}
         </div>
 
         {/* Available Orders */}
