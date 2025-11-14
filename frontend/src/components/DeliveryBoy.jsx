@@ -107,7 +107,8 @@ function DeliveryBoy() {
             Welcome, {userData.fullName}
           </h1>
 
-          // sir said dont show location of delivery boy
+          {/* sir said dont show location of delivery boy */}
+          
           {/* <p className="text-[#ff4d2d]">
             <span className="font-bold">Latitude: </span>
             {userData.location.coordinates[1]},{" "}
