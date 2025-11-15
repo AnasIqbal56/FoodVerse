@@ -11,6 +11,7 @@ import asian from "../assets/Asian-Food.jpg";
 import bakery from "../assets/bakery.png";
 import cakes from "../assets/cakes.png";
 import { FaUtensils } from "react-icons/fa6";
+
 // Food Slider Data
 const foodItems = [
   { id: 1, name: "Gourmet Burger", image: image1, description: "Juicy, Fresh & Delicious" },
@@ -21,49 +22,6 @@ const foodItems = [
 // Static Emojis Component (NO ANIMATION)
 const StaticEmoji = ({ emoji }) => (
   <span className="inline-block text-5xl">{emoji}</span>
-);
-
-// Minimalist Icon Components with animations (ICON ONLY, NO EMOJI)
-const SpeedIcon = () => (
-  <motion.div 
-    animate={{ y: [0, -8, 0] }} 
-    transition={{ duration: 2, repeat: Infinity }}
-    className="w-12 h-12 rounded-full flex items-center justify-center text-white"
-    style={{ backgroundColor: '#C1121F' }}
-  >
-    <Zap size={24} />
-  </motion.div>
-);
-
-const QualityIcon = () => (
-  <motion.div 
-    animate={{ rotate: [0, 360] }} 
-    transition={{ duration: 4, repeat: Infinity, linear: true }}
-    className="w-12 h-12 rounded-full flex items-center justify-center text-white"
-    style={{ backgroundColor: '#be9202ff' }}
-  >
-    <ChefHat size={24} />
-  </motion.div>
-);
-
-const PriceIcon = () => (
-  <motion.div 
-    animate={{ scale: [1, 1.1, 1] }} 
-    transition={{ duration: 2, repeat: Infinity }}
-    className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white"
-  >
-    <DollarSign size={24} />
-  </motion.div>
-);
-
-const DeliveryIcon = () => (
-  <motion.div 
-    animate={{ x: [0, 10, -10, 0] }} 
-    transition={{ duration: 2, repeat: Infinity }}
-    className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white"
-  >
-    <Bike size={24} />
-  </motion.div>
 );
 
 function LandingPage() {
@@ -161,6 +119,11 @@ function LandingPage() {
 
   const handleGetStarted = () => navigate("/signin");
   const handleLogin = () => navigate("/signin");
+  
+  // Function to handle city click - navigate to restaurants page
+  const handleCityClick = (cityName) => {
+    navigate(`/restaurants/${cityName.toLowerCase()}`);
+  };
 
   const nextFood = () => {
     setCurrentFood((prev) => (prev + 1) % foodItems.length);
@@ -294,7 +257,7 @@ function LandingPage() {
             </motion.a>
           </nav>
 
-          {/* Login Button */}
+          {/* Login Button - Updated to LOGIN/SIGNUP */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -302,7 +265,7 @@ function LandingPage() {
             className="hidden md:block text-white px-6 py-2 rounded-full font-semibold text-sm hover:shadow-lg transition-shadow"
             style={{ backgroundColor: '#C1121F' }}
           >
-            Login
+            Login/Signup
           </motion.button>
 
           {/* Mobile Menu Button */}
@@ -473,6 +436,7 @@ function LandingPage() {
                         src={item.image}
                         alt={item.name}
                         className="w-64 h-64 md:w-80 md:h-80 object-cover rounded-2xl shadow-xl"
+                        style={{ transform: 'translateY(10px)' }} // Slight downward shift
                       />
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -590,12 +554,13 @@ function LandingPage() {
             </div>
           </motion.div>
 
-          {/* RIGHT - Image Grid */}
+          {/* RIGHT - Image Grid with slight downward shift */}
           <motion.div
             initial={{ opacity: 0, x: 50 }}
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
             className="grid grid-cols-2 gap-4"
+            style={{ transform: 'translateY(20px)' }} // Slight downward shift
           >
             {[burger, pizza, asian, bakery].map((img, index) => (
               <motion.div
@@ -685,7 +650,7 @@ function LandingPage() {
               whileHover={{ scale: 1.05 }}
               className="relative z-10"
             >
-              <div className="bg-white rounded-2xl p-8 text-center shadow-lg hover:shadow-xl transition-shadow border-2 border-gray-100" style={{ borderColor: '#be9202ff' }}>
+              <div className="bg-white rounded-2xl p-8 text-center shadow-lg hover:shadow-xl transition-all border-2" style={{ borderColor: '#be9202ff' }}>
                 {/* Step Circle */}
                 <motion.div
                   animate={{ scale: [1, 1.1, 1] }}
@@ -722,8 +687,9 @@ function LandingPage() {
             <h2 className="text-4xl md:text-6xl font-black font-playfair mb-6" style={{ color: '#3E2723' }}>
               Where We Deliver
             </h2>
+            {/* Updated text line */}
             <p className="text-lg md:text-xl font-light max-w-3xl mx-auto" style={{ color: '#2C1810', opacity: 0.8 }}>
-              Expanding across Pakistan to bring delicious food to your doorstep
+              Delivering delicious food all over Pakistan to your doorstep
             </p>
           </motion.div>
 
@@ -736,20 +702,21 @@ function LandingPage() {
           >
             {[
               { Icon: Building2, city: 'Karachi', areas: '5+ Areas', status: 'Active', color: '#C1121F' },
-              { Icon: Globe, city: 'Islamabad', areas: '3+ Areas', status: 'Coming Soon', color: '#be9202ff' },
-              { Icon: Building2, city: 'Lahore', areas: '4+ Areas', status: 'Coming Soon', color: '#C1121F' },
-              { Icon: Mountain, city: 'Peshawar', areas: '2+ Areas', status: 'Coming Soon', color: '#be9202ff' },
-              { Icon: Building2, city: 'Multan', areas: '2+ Areas', status: 'Coming Soon', color: '#C1121F' },
-              { Icon: TrendingUp, city: 'Faisalabad', areas: '2+ Areas', status: 'Coming Soon', color: '#be9202ff' },
-              { Icon: MapPin, city: 'Hyderabad', areas: '1+ Area', status: 'Coming Soon', color: '#C1121F' },
-              { Icon: Waves, city: 'Gwadar', areas: '1+ Area', status: 'Coming Soon', color: '#be9202ff' },
+              { Icon: Globe, city: 'Islamabad', areas: '3+ Areas', status: 'Active', color: '#be9202ff' },
+              { Icon: Building2, city: 'Lahore', areas: '4+ Areas', status: 'Active', color: '#C1121F' },
+              { Icon: Mountain, city: 'Peshawar', areas: '2+ Areas', status: 'Active', color: '#be9202ff' },
+              { Icon: Building2, city: 'Multan', areas: '2+ Areas', status: 'Active', color: '#C1121F' },
+              { Icon: TrendingUp, city: 'Faisalabad', areas: '2+ Areas', status: 'Active', color: '#be9202ff' },
+              { Icon: MapPin, city: 'Hyderabad', areas: '1+ Area', status: 'Active', color: '#C1121F' },
+              { Icon: Waves, city: 'Gwadar', areas: '1+ Area', status: 'Active', color: '#be9202ff' },
             ].map((location, index) => (
               <motion.div
                 key={index}
                 variants={itemVariants}
                 whileHover={{ y: -10, boxShadow: '0 20px 40px rgba(193, 18, 31, 0.15)' }}
-                className="p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all text-center bg-white"
+                className="p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all text-center bg-white cursor-pointer"
                 style={{ borderTop: `4px solid ${location.color}` }}
+                onClick={() => handleCityClick(location.city)}
               >
                 <div className="mb-4 flex justify-center">
                   <location.Icon size={48} style={{ color: location.color }} />
@@ -1134,16 +1101,6 @@ function LandingPage() {
               </form>
             </motion.div>
           </div>
-
-          {/* Social Media Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mt-20"
-          >
-          
-          </motion.div>
 
           {/* Enhanced CTA Section */}
           <motion.div
