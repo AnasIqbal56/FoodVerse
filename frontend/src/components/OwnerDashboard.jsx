@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
-import Nav from "./Nav"; 
+import Nav from "./Nav";
+import { serverUrl } from "../App";
 import { useSelector } from "react-redux";
 import { FaUtensils, FaPen } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -11,7 +12,6 @@ import bg1 from "../assets/burgurs.png";
 import bg2 from "../assets/image5.jpg";
 import bgHero from "../assets/generated-image1.png";
 
-
 function OwnerDashboard() {
   const { myShopData } = useSelector(state => state.owner);
   const navigate = useNavigate();
@@ -21,18 +21,47 @@ function OwnerDashboard() {
     if (!myShopData || !Array.isArray(myShopData.items)) return [];
     const q = query.trim().toLowerCase();
     if (!q) return myShopData.items;
-    return myShopData.items.filter(i => (i.name || "").toLowerCase().includes(q) || (i.description || "").toLowerCase().includes(q));
+    return myShopData.items.filter(i =>
+      (i.name || "").toLowerCase().includes(q) ||
+      (i.description || "").toLowerCase().includes(q)
+    );
   }, [myShopData, query]);
 
-  return (
-    <div className="w-full min-h-screen relative" style={{ backgroundColor: '#f7d26eff' }}>
-      {/* Subtle background with images and warm overlay to match landing page */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(247,210,110,0.35), rgba(193,18,31,0.03))' }} />
-        <img src={bg1} alt="bg1" className="absolute inset-0 w-full h-full object-cover opacity-8 blur-sm" />
-        <img src={bg2} alt="bg2" className="absolute right-8 top-20 w-80 h-80 object-cover opacity-6 rounded-xl transform rotate-3" />
-      </div>
+  // Resolve image helper
+  const resolveImage = (img) => {
+    if (!img) return null;
+    if (/^(https?:)?\/\//.test(img) || img.startsWith('data:') || img.startsWith('blob:')) {
+      if (
+        typeof img === "string" &&
+        img.includes("res.cloudinary.com") &&
+        img.includes("/upload/") &&
+        !img.includes("q_auto")
+      ) {
+        return img.replace("/upload/", "/upload/q_auto,f_auto,w_1600/");
+      }
+      return img;
+    }
+    if (img.startsWith("/")) return `${serverUrl}${img}`;
+    if (img.includes("/uploads/") || img.startsWith("uploads/"))
+      return img.startsWith("/") ? `${serverUrl}${img}` : `${serverUrl}/${img}`;
+    if (!img.includes("/")) return `${serverUrl}/uploads/${img}`;
+    return `${serverUrl}/${img}`;
+  };
 
+  const shopImage = myShopData?.image ? resolveImage(myShopData.image) : null;
+
+  const rootStyle = shopImage
+    ? {
+        backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url(${shopImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backgroundAttachment: "fixed",
+      }
+    : { backgroundColor: "#f7d26eff" };
+
+  return (
+    <div className="min-h-screen w-full bg-cover bg-center" style={rootStyle}>
       <Nav />
 
       {!myShopData ? (
@@ -45,7 +74,7 @@ function OwnerDashboard() {
             </p>
             <button
               className="text-white font-semibold px-6 py-3 rounded-full shadow-md transition-colors duration-200"
-              style={{ backgroundColor: '#C1121F' }}
+              style={{ backgroundColor: "#C1121F" }}
               onClick={() => navigate("/create-edit-shop")}
             >
               Get Started
@@ -56,48 +85,50 @@ function OwnerDashboard() {
         <div className="w-full flex flex-col items-center gap-12 px-4 sm:px-6 mt-12">
 
           {/* Main heading */}
-          <div className="text-center relative z-10 pt-6 pb-2">
-            <h1 className="text-4xl sm:text-5xl font-playfair font-extrabold mb-2" style={{ color: '#3E2723' }}>
-              Welcome to <span style={{ color: '#C1121F' }}>{myShopData.name}</span>
+          <div className="text-center relative z-10 pt-8 pb-4">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-playfair font-extrabold mb-2 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]">
+              Welcome to <span style={{ color: "#C1121F" }}>{myShopData.name}</span>
             </h1>
-            <p className="text-#2C1810 sm:text-lg" style={{ color: '#2C1810' }}>
+            <p className="sm:text-lg text-white/90 drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">
               Manage your restaurant, showcase your menu, and delight your customers.
             </p>
           </div>
 
           {/* Restaurant Info Card */}
-          <div className="bg-white rounded-2xl overflow-hidden border transition-shadow duration-300 w-full max-w-4xl relative shadow-lg" style={{ borderColor: '#C1121F20' }}>
+          <div className="bg-white/95 rounded-2xl overflow-hidden transition-shadow duration-300 w-full max-w-4xl relative shadow-[0_0_24px_6px_rgba(255,255,255,0.22)]">
             <div
               className="absolute top-4 right-4 p-2 text-white rounded-full shadow-md cursor-pointer transition-colors"
               onClick={() => navigate("/create-edit-shop")}
-              style={{ backgroundColor: '#C1121F' }}
+              style={{ backgroundColor: "#C1121F" }}
             >
               <FaPen size={20} />
             </div>
             <img
-              src={myShopData.image}
+              src={shopImage || myShopData.image}
               alt={myShopData.name}
               className="w-full h-64 sm:h-80 object-cover"
             />
             <div className="p-6">
-              <h2 className="text-3xl font-bold mb-2" style={{ color: '#3E2723' }}>{myShopData.name}</h2>
-              <p className="mb-1" style={{ color: '#2C1810', opacity: 0.9 }}>{myShopData.city}, {myShopData.state}</p>
-              <p style={{ color: '#2C1810', opacity: 0.9 }}>{myShopData.address}</p>
+              <h2 className="text-3xl font-bold mb-2" style={{ color: "#3E2723" }}>{myShopData.name}</h2>
+              <p className="mb-1" style={{ color: "#2C1810", opacity: 0.9 }}>{myShopData.city}, {myShopData.state}</p>
+              <p style={{ color: "#2C1810", opacity: 0.9 }}>{myShopData.address}</p>
             </div>
           </div>
 
-          {/* MENU HERO + INTERACTIVE CONTROLS */}
+          {/* Menu Section Header*/}
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="w-full max-w-6xl mt-8"
           >
-            <div className="relative rounded-2xl overflow-hidden">
+            <div className="relative rounded-xl overflow-hidden shadow-[0_0_48px_24px_rgba(255,255,255,0.60)]">
               <img src={bgHero} alt="menu-hero" className="w-full h-48 object-cover brightness-75" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
               <div className="absolute left-6 top-6 text-white">
                 <h2 className="text-3xl font-playfair font-extrabold">Your Menu</h2>
-                <p className="mt-1 text-sm" style={{ color: 'rgba(255,255,255,0.9)' }}>Manage items, update availability and preview how customers see your menu.</p>
+                <p className="mt-1 text-sm" style={{ color: 'rgba(255,255,255,0.9)' }}>
+                  Manage items, update availability and preview how customers see your menu.
+                </p>
               </div>
               <div className="absolute right-6 top-6 flex items-center gap-3">
                 <input
@@ -105,7 +136,7 @@ function OwnerDashboard() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search items by name or description"
-                  className="px-4 py-2 rounded-full outline-none bg-white/90 text-sm w-64"
+                  className="px-4 py-2 rounded-full outline-none bg-white/90 text-sm w-[24rem] lg:w-[32rem]"
                 />
                 <button
                   onClick={() => navigate('/add-item')}
@@ -118,7 +149,7 @@ function OwnerDashboard() {
             </div>
           </motion.section>
 
-          {/* Food Items Section - grid layout */}
+          {/* Food Items Section */}
           <div className="w-full max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 pt-6 pb-12">
             {filteredItems.length === 0 ? (
               <div className="flex justify-center items-center p-6 w-full">
@@ -140,7 +171,9 @@ function OwnerDashboard() {
             ) : (
               filteredItems.map((item, index) => (
                 <motion.div key={index} whileHover={{ y: -6, scale: 1.01 }} className="transition-shadow">
-                  <OwnerItemCard data={item} />
+                  <div className="bg-white rounded-2xl shadow-[0_0_16px_4px_rgba(255,255,255,0.13)]">
+                    <OwnerItemCard data={item} />
+                  </div>
                 </motion.div>
               ))
             )}

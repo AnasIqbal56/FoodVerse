@@ -29,6 +29,7 @@ function AddItem() {
             "North Indian",
             "Chinese",
             "Fast Food",
+            "Beverages",
             "Others"]
     const dispatch=useDispatch()
 

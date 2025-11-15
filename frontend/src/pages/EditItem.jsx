@@ -34,6 +34,7 @@ function EditItem() {
     "North Indian",
     "Chinese",
     "Fast Food",
+    "Beverages",
     "Others",
   ];
 
