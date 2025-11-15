@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
@@ -7,6 +7,7 @@ import useGetCurrentUser from "./hooks/useGetCurrentUser";
 import useGetCity from "./hooks/useGetCity";
 import useGetMyShop from "./hooks/useGetMyShop";
 import { useDispatch, useSelector } from "react-redux";
+import { loadCartFromStorage } from "./redux/userSlice";
 import Home from "./pages/Home";
 import CreateEditShop from "./pages/CreateEditShop";
 import AddItem from "./pages/AddItem";
@@ -23,10 +24,13 @@ import TrackOrderPage from "./pages/TrackOrderPage.jsx";
 import Shop from "./pages/Shop.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import AIWorld from "./pages/AIWorld.jsx";
+import SafepayCheckout from "./pages/SafepayCheckout.jsx";
 
 export const serverUrl = "http://localhost:8000";
 
 function App() {
+  const dispatch = useDispatch();
+  
   useGetCurrentUser();
   useUpdateLocation();
   useGetCity();
@@ -36,6 +40,11 @@ function App() {
   useGetMyOrders();
 
   const { userData } = useSelector((state) => state.user);
+
+  // Load cart from localStorage on app mount
+  useEffect(() => {
+    dispatch(loadCartFromStorage());
+  }, [dispatch]);
 
   return (
     <Routes>
@@ -84,6 +93,10 @@ function App() {
       <Route
         path="/order-placed"
         element={userData ? <OrderPlaced /> : <Navigate to="/signin" />}
+      />
+      <Route
+        path="/safepay-checkout"
+        element={userData ? <SafepayCheckout /> : <Navigate to="/signin" />}
       />
       <Route
         path="/my-orders"

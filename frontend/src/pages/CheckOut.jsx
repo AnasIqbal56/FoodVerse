@@ -31,6 +31,7 @@ function CheckOut() {
   const { location, address } = useSelector((state) => state.map);
   const { cartItems,totalAmount, userData } = useSelector((state) => state.user);
   const [paymentMethod, setPaymentMethod] = useState('cod');
+  const [isProcessing, setIsProcessing] = useState(false);
   const deliveryFee= totalAmount>500?0:40;
   const AmountWithDeliveryFee=totalAmount+deliveryFee;
   ///
@@ -73,23 +74,104 @@ function CheckOut() {
     }
   };
 
-  const handlePlaceOrder=async ()=>{
-    try{
-      const result=await axios.post(`${serverUrl}/api/order/place-order`,{
-        paymentMethod,
-        deliveryAddress:{
-          text:addressInput,
-          latitude:location.lat,
-          longitude:location.lon,
-        },
-        totalAmount,
-        cartItems
-      },{withCredentials:true})
-      dispatch(addMyOrder(result.data))
-      navigate("/order-placed")
+  const handlePlaceOrder = async () => {
+    console.log('=== PLACE ORDER CLICKED ===');
+    console.log('Payment Method:', paymentMethod);
+    console.log('Total Amount:', totalAmount);
+    console.log('Amount with Delivery:', AmountWithDeliveryFee);
+    console.log('Cart Items:', cartItems);
+    
+    // Validate before processing
+    if (!addressInput || addressInput.trim() === '') {
+      alert('Please enter a delivery address');
+      return;
+    }
+    
+    if (!location?.lat || !location?.lon) {
+      alert('Please select a valid delivery location on the map');
+      return;
+    }
+    
+    if (!cartItems || cartItems.length === 0) {
+      alert('Your cart is empty');
+      return;
+    }
+    
+    setIsProcessing(true);
+    
+    try {
+      if (paymentMethod === 'cod') {
+        console.log('Processing COD payment...');
+        // Cash on Delivery - existing flow
+        const result = await axios.post(`${serverUrl}/api/order/place-order`, {
+          paymentMethod,
+          deliveryAddress: {
+            text: addressInput,
+            latitude: location.lat,
+            longitude: location.lon,
+          },
+          totalAmount: AmountWithDeliveryFee,
+          cartItems
+        }, { withCredentials: true });
+        
+        console.log('COD Order placed:', result.data);
+        dispatch(addMyOrder(result.data));
+        navigate("/order-placed");
+      } else if (paymentMethod === 'online') {
+        console.log('Processing ONLINE payment...');
+        console.log('Calling create-payment-session API...');
+        
+        // Online Payment - Safepay flow
+        const result = await axios.post(`${serverUrl}/api/order/create-payment-session`, {
+          deliveryAddress: {
+            text: addressInput,
+            latitude: location.lat,
+            longitude: location.lon,
+          },
+          totalAmount,
+          cartItems
+        }, { withCredentials: true });
 
-    }catch(error){ 
-      console.log('place order error', error.response?.data || error.message);
+        console.log('Payment session created:', result.data);
+        console.log('Checkout URL:', result.data.checkoutUrl);
+
+        // Store order ID in localStorage for verification after payment
+        localStorage.setItem('pendingOrderId', result.data.orderId);
+        localStorage.setItem('paymentToken', result.data.token);
+
+        console.log('Stored in localStorage:', {
+          orderId: result.data.orderId,
+          token: result.data.token
+        });
+
+        // Extract tracker and amount from checkoutUrl
+        const url = new URL(result.data.checkoutUrl);
+        const tracker = url.searchParams.get('tracker');
+        const amount = url.searchParams.get('amount');
+
+        // Navigate to Safepay checkout using React Router
+        console.log('Navigating to safepay-checkout with:', { tracker, amount });
+        navigate(`/safepay-checkout?tracker=${tracker}&amount=${amount}`);
+      }
+    } catch (error) {
+      console.error('=== PLACE ORDER ERROR ===');
+      console.error('Error details:', error.response?.data || error.message);
+      console.error('Full error:', error);
+      
+      // Provide user-friendly error messages
+      let errorMessage = 'Failed to place order. Please try again.';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message === 'Network Error') {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Request timeout. Please try again.';
+      }
+      
+      alert(errorMessage);
+    } finally {
+      setIsProcessing(false);
     }
   }
 
@@ -236,8 +318,23 @@ function CheckOut() {
           </div>
         </section>
 
-        <button className='w-full bg-[#ff4d2d] hover:bg-[#e64526] text-white py-3
-        rounded-xl font-semibold' onClick={handlePlaceOrder}>{paymentMethod=="cod"?"place order":"Pay & place Order"}</button>
+        <button 
+          className='w-full bg-[#ff4d2d] hover:bg-[#e64526] text-white py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed' 
+          onClick={handlePlaceOrder}
+          disabled={isProcessing}
+        >
+          {isProcessing ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Processing...
+            </span>
+          ) : (
+            paymentMethod === "cod" ? "Place Order" : "Pay & Place Order"
+          )}
+        </button>
 
 
       </div>

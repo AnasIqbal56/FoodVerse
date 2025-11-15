@@ -79,7 +79,11 @@ const userSlice = createSlice({
             }
 
             state.totalAmount = state.cartItems.reduce((sum, i) => sum + Number(i.price) * Number(i.quantity), 0);
-            // helpful debug output
+            
+            // Save to localStorage
+            localStorage.setItem('cartItems', JSON.stringify(state.cartItems));
+            localStorage.setItem('totalAmount', state.totalAmount.toString());
+            
             console.log("cartItems updated:", state.cartItems);
 
 
@@ -106,10 +110,35 @@ const userSlice = createSlice({
                 item.quantity=quantity  
             }
             state.totalAmount=state.cartItems.reduce((sum,i)=>sum+i.price*i.quantity,0)
+            
+            // Save to localStorage
+            localStorage.setItem('cartItems', JSON.stringify(state.cartItems));
+            localStorage.setItem('totalAmount', state.totalAmount.toString());
         },
         removeCartItem: (state, action) => {
             state.cartItems = state.cartItems.filter(i => i.id !== action.payload);
             state.totalAmount=state.cartItems.reduce((sum,i)=>sum+i.price*i.quantity,0)
+            
+            // Save to localStorage
+            localStorage.setItem('cartItems', JSON.stringify(state.cartItems));
+            localStorage.setItem('totalAmount', state.totalAmount.toString());
+        },
+        clearCart: (state) => {
+            state.cartItems = [];
+            state.totalAmount = 0;
+            
+            // Clear from localStorage
+            localStorage.removeItem('cartItems');
+            localStorage.removeItem('totalAmount');
+        },
+        loadCartFromStorage: (state) => {
+            const savedCart = localStorage.getItem('cartItems');
+            const savedTotal = localStorage.getItem('totalAmount');
+            
+            if (savedCart) {
+                state.cartItems = JSON.parse(savedCart);
+                state.totalAmount = savedTotal ? parseFloat(savedTotal) : 0;
+            }
         },
 
         setMyOrders:(state,action)=>{
@@ -154,5 +183,5 @@ const userSlice = createSlice({
 export const {setUserData,setCurrentCity,setCurrentState,setCurrentAddress,
         addMyOrder,
 setShopsInMyCity,setItemsInMyCity,addToCart,updateQuantity,
-removeCartItem,setMyOrders,updateOrderStatus,setSearchItems,setSocket,updateRealTimeOrderStatus}=userSlice.actions
+removeCartItem,clearCart,loadCartFromStorage,setMyOrders,updateOrderStatus,setSearchItems,setSocket,updateRealTimeOrderStatus}=userSlice.actions
 export default userSlice.reducer

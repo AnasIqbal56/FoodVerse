@@ -56,7 +56,7 @@ const handleDecrease= ()=>{
 
 <div className='flex items-center justify-between mt-auto p-4'>
     <span className='font-bold text-gray-900 text-lg'>
-        {data.price}
+       Rs {data.price}
     </span>
 
     <div className='flex items-center border rounded-full overflow-hidden shadow-sm'>

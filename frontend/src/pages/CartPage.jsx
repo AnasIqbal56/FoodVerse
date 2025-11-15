@@ -30,7 +30,7 @@ function CartPage() {
           <div className="mt-6 bg-white p-4 rounded-xl shadow flex justify-between items-center border">
             <h1 className="text-lg font-semibold"> Total Amount</h1>
             <span className="text-xl font-bold text-[#ff4d2d]" >
-              ₹{totalAmount}
+              Rs {totalAmount}
             </span>
           </div>
           <div className="mt-4 flex justify-end" >
