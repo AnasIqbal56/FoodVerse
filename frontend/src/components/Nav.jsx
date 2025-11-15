@@ -57,7 +57,8 @@ function Nav() {
   return (
     <div
       className="w-full h-[80px] flex items-center justify-between md:justify-center
-      gap-[30px] px-[20px] fixed top-0 z-[9999] bg-[#fff9f6] overflow-visible"
+      gap-[30px] px-[20px] fixed top-0 z-[9999] overflow-visible shadow-sm"
+      style={{ background: 'linear-gradient(90deg, #f7d26eff 0%, rgba(255,255,255,0.9) 60%)' }}
     >
       {showSearch && userData.role === "user" && (
         <div
@@ -68,12 +69,12 @@ function Nav() {
             className="flex items-center gap-[10px] w-[30%] overflow-hidden px-[10px]
             border-r-[2px] border-gray-400"
           >
-            <FaLocationDot size={25} className="text-[#ff4d2d]" />
+            <FaLocationDot size={25} className="text-[#C1121F]" />
             <div className="w-[80%] truncate text-gray-600">{currentCity}</div>
           </div>
 
           <div className="w-[80%] flex items-center gap-[10px]">
-            <FaSearch size={25} className="text-[#ff4d2d]" />
+            <FaSearch size={25} className="text-[#C1121F]" />
             <input
               type="text"
               placeholder="Search delicious food"
@@ -85,7 +86,7 @@ function Nav() {
         </div>
       )}
 
-      <h1 className="text-3xl font-bold mb-2 text-[#ff4d2d]">Food Verse</h1>
+      <h1 className="text-3xl font-bold mb-2 text-[#2C1810]">Food Verse</h1>
 
       {userData.role === "user" && (
         <div
@@ -96,12 +97,12 @@ function Nav() {
             className="flex items-center gap-[10px] w-[30%] overflow-hidden px-[10px]
             border-r-[2px] border-gray-400"
           >
-            <FaLocationDot size={25} className="text-[#ff4d2d]" />
+            <FaLocationDot size={25} className="text-[#C1121F]" />
             <div className="w-[80%] truncate text-gray-600">{currentCity}</div>
           </div>
 
           <div className="w-[80%] flex items-center gap-[10px]">
-            <FaSearch size={25} className="text-[#ff4d2d]" />
+            <FaSearch size={25} className="text-[#C1121F]" />
             <input
               type="text"
               placeholder="Search Delicious Food"
@@ -114,48 +115,30 @@ function Nav() {
         {userData.role === "user" &&
           (showSearch ? (
             <RxCross1
-              className="text-[#ff4d2d] md:hidden"
+              className="text-[#C1121F] md:hidden"
               onClick={() => setShowSearch(false)}
             />
           ) : (
             <FaSearch
               size={25}
-              className="text-[#ff4d2d] md:hidden"
+              className="text-[#C1121F] md:hidden"
               onClick={() => setShowSearch(true)}
             />
           ))}
 
         {userData.role === "owner" ? (
           <>
-            {myShopData && (
-              <>
-                <button
-                  className="hidden md:flex items-center gap-1 p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]"
-                  onClick={() => navigate("/add-item")}
-                >
-                  <FaPlus size={20} />
-                  <span>Add Food Item</span>
-                </button>
-
-                <button
-                  className="md:hidden flex items-center p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]"
-                  onClick={() => navigate("/add-item")}
-                >
-                  <FaPlus size={20} />
-                </button>
-              </>
-            )}
 
             <div
               className="hidden md:flex items-center gap-2 cursor-pointer relative px-3 py-1 rounded-lg
-              bg-[#ff4d2d]/10 text-[#ff4d2d] font-medium"
+              bg-[#C1121F]/10 text-[#C1121F] font-medium"
               onClick={() => navigate("/my-orders")}
             >
               <LuReceipt size={20} />
               <span>My Orders</span>
               <span
                 className="absolute -right-2 -top-2 text-xs font-bold text-white 
-                bg-[#ff4d2d] rounded-full px-[6px] py-[1px]"
+                bg-[#C1121F] rounded-full px-[6px] py-[1px]"
               >
                 0
               </span>
@@ -163,13 +146,13 @@ function Nav() {
 
             <div
               className="md:hidden flex items-center gap-2 cursor-pointer relative px-3 py-1 rounded-lg
-              bg-[#ff4d2d]/10 text-[#ff4d2d] font-medium"
+              bg-[#C1121F]/10 text-[#C1121F] font-medium"
               onClick={() => navigate("/my-orders")}
             >
               <LuReceipt size={20} />
               <span
                 className="absolute -right-2 -top-2 text-xs font-bold text-white 
-                bg-[#ff4d2d] rounded-full px-[6px] py-[1px]"
+                bg-[#C1121F] rounded-full px-[6px] py-[1px]"
               >
                 0
               </span>
@@ -183,8 +166,8 @@ function Nav() {
                 onClick={() => navigate("/cart")}
               >
 
-                <IoCartOutline size={25} className="text-[#ff4d2d]" />
-                <span className="absolute right-[-9px] top-[-12px] text-[#ff4d2d]">
+                <IoCartOutline size={25} className="text-[#C1121F]" />
+                <span className="absolute right-[-9px] top-[-12px] text-[#C1121F]">
                   {cartItems.length}
                 </span>
               </div>
@@ -193,8 +176,8 @@ function Nav() {
             {/* AI WORLD Button - Add this */}
             {userData.role === "user" && (
             <button
-                className="px-3 py-1 rounded-lg bg-[#ff4d2d]/10
-                text-[#ff4d2d] text-sm font-medium"
+                className="px-3 py-1 rounded-lg bg-[#C1121F]/10
+                text-[#C1121F] text-sm font-medium"
                     onClick={() => navigate("/ai-world")}
                       >
                       AI WORLD
@@ -202,8 +185,8 @@ function Nav() {
               )}
 
             <button
-              className="hidden md:block px-3 py-1 rounded-lg bg-[#ff4d2d]/10
-              text-[#ff4d2d] text-sm font-medium"
+              className="hidden md:block px-3 py-1 rounded-lg bg-[#C1121F]/10
+              text-[#C1121F] text-sm font-medium"
               onClick={() => navigate("/my-orders")}
             >
               My Orders
@@ -213,7 +196,7 @@ function Nav() {
 
         <div
           className="w-[40px] h-[40px] rounded-full flex items-center justify-center
-          bg-[#ff4d2d] text-white text-[18px] shadow-xl font-semibold cursor-pointer"
+          bg-[#C1121F] text-white text-[18px] shadow-xl font-semibold cursor-pointer"
           onClick={() => setShowInfo((prev) => !prev)}
         >
           {(userData?.fullName ?? "").slice(0, 1)}
@@ -229,13 +212,13 @@ function Nav() {
               {userData?.fullName ?? "User"}
             </div>
             <div
-              className="md:hidden text-[#ff4d2d] font-semibold cursor-pointer"
+              className="md:hidden text-[#C1121F] font-semibold cursor-pointer"
               onClick={() => navigate("/my-orders")}
             >
               My Orders
             </div>
             <div
-              className="text-[#ff4d2d] font-semibold cursor-pointer"
+              className="text-[#C1121F] font-semibold cursor-pointer"
               onClick={handleLogout}
             >
               Log Out
