@@ -25,7 +25,7 @@ import Shop from "./pages/Shop.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import AIWorld from "./pages/AIWorld.jsx";
 
-export const serverUrl = "http://localhost:8000";
+export const serverUrl =  "https://food-verse-hazel.vercel.app";
 
 function App() {
   const dispatch = useDispatch();
