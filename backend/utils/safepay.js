@@ -203,22 +203,19 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
                      response.data?.data?.redirect_url;
 
     // If no checkout URL in response, construct it
-    // Try different URL formats based on SafePay documentation
+    // Try without URL encoding first - SafePay might handle the token directly
     if (!checkoutUrl) {
-      // Format 1: Using /checkout/external endpoint (most common)
+      // Format that worked before: /checkout/external?token=TOKEN&environment=sandbox
+      // Don't encode the token - SafePay expects it as-is
       checkoutUrl = `${SAFEPAY_BASE_URL}/checkout/external?token=${token}&environment=${environment}`;
-      
-      // Alternative formats (uncomment to try):
-      // Format 2: Standard checkout with tracker parameter
-      // checkoutUrl = `${SAFEPAY_BASE_URL}/checkout?tracker=${token}&environment=${environment}`;
-      
-      // Format 3: Using token parameter
-      // checkoutUrl = `${SAFEPAY_BASE_URL}/checkout?token=${token}&environment=${environment}`;
     }
     
+    console.log('=== SafePay Checkout URL Details ===');
     console.log('Generated checkout URL:', checkoutUrl);
-    console.log('Token used:', token);
-    console.log('Environment used:', environment);
+    console.log('Token (raw):', token);
+    console.log('Environment:', environment);
+    console.log('Base URL:', SAFEPAY_BASE_URL);
+    console.log('====================================');
 
     return {
       success: true,

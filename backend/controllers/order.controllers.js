@@ -614,11 +614,28 @@ export const handleSafepayWebhook = async (req, res) => {
     }
 
     // Extract order ID from the webhook (handle different payload structures)
-    const orderId = webhookData.tracker?.order_id || 
-                    webhookData.order_id || 
-                    webhookData.data?.order_id ||
-                    webhookData.order?.id ||
-                    webhookData.metadata?.order_id;
+    // SafePay sends order_id in payment_metadata array where meta_key === "order_id"
+    let orderId = null;
+    
+    // Method 1: Check payment_metadata array (most common in SafePay webhooks)
+    if (webhookData.payment_metadata && Array.isArray(webhookData.payment_metadata)) {
+      const orderIdMeta = webhookData.payment_metadata.find(
+        meta => meta.meta_key === 'order_id'
+      );
+      if (orderIdMeta && orderIdMeta.meta_value) {
+        orderId = orderIdMeta.meta_value;
+      }
+    }
+    
+    // Method 2: Check root level fields
+    if (!orderId) {
+      orderId = webhookData.tracker?.order_id || 
+                webhookData.order_id || 
+                webhookData.data?.order_id ||
+                webhookData.order?.id ||
+                webhookData.metadata?.order_id ||
+                webhookData.root?.order_id;
+    }
     
     if (!orderId) {
       console.error('No order ID in webhook. Full payload:', JSON.stringify(webhookData, null, 2));
@@ -659,24 +676,31 @@ export const handleSafepayWebhook = async (req, res) => {
     }
 
     // Extract payment status from webhook (handle different payload structures)
-    const paymentState = webhookData.data?.state || 
-                        webhookData.state || 
+    // SafePay uses "PAID", "PAYMENT_FAILED", etc. in the state field
+    const paymentState = webhookData.state || 
+                        webhookData.data?.state || 
+                        webhookData.root?.state ||
                         webhookData.status ||
                         webhookData.payment?.state ||
                         webhookData.transaction?.state;
     
     // Extract transaction reference
-    const transactionId = webhookData.data?.reference || 
-                        webhookData.reference || 
+    const transactionId = webhookData.reference || 
+                        webhookData.token ||
+                        webhookData.data?.reference || 
+                        webhookData.data?.token ||
+                        webhookData.root?.reference ||
+                        webhookData.root?.token ||
                         webhookData.transaction_id ||
                         webhookData.transaction?.id ||
-                        webhookData.id ||
-                        webhookData.token;
+                        webhookData.id;
 
     console.log('Processing webhook for order:', orderId, 'State:', paymentState);
 
     // Handle completed/successful payment
-    if (paymentState === 'COMPLETED' || 
+    // SafePay uses "PAID" state for successful payments
+    if (paymentState === 'PAID' ||
+        paymentState === 'COMPLETED' || 
         paymentState === 'completed' || 
         paymentState === 'SUCCESS' || 
         paymentState === 'success' ||
