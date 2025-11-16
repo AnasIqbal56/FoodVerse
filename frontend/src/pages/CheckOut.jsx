@@ -109,7 +109,22 @@ function CheckOut() {
         dispatch(addMyOrder(result.data));
         navigate("/order-placed");
       } else if (paymentMethod === 'online') {
-        alert('Online payment will be implemented soon with proper webhook support!');
+        // Initiate Safepay payment
+        const result = await axios.post(`${serverUrl}/api/order/initiate-payment`, {
+          deliveryAddress: {
+            text: addressInput,
+            latitude: location.lat,
+            longitude: location.lon,
+          },
+          totalAmount: AmountWithDeliveryFee,
+          cartItems
+        }, { withCredentials: true });
+        
+        // Store order ID in localStorage to verify after payment
+        localStorage.setItem('pendingOrderId', result.data.orderId);
+        
+        // Redirect to Safepay checkout page
+        window.location.href = result.data.checkoutUrl;
       }
     } catch (error) {
       console.error('Place order error:', error);

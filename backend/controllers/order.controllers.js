@@ -4,6 +4,7 @@ import User from '../models/user.model.js';
 import DeliveryAssignment from '../models/deliveryAssignment.model.js';
 import mongoose from 'mongoose';
 import { sendDeliveryOtpMail } from '../utils/mail.js';
+import { createSafepayPayment } from '../utils/safepay.js';
 
 export const placeOrder = async (req, res) => {
   try {
@@ -107,7 +108,12 @@ export const getMyOrders = async (req, res) => {
       return res.status(200).json(orders);
     } else if (user.role === "owner") {
       const orders = await Order.find({ 
-        "shopOrders.owner": req.userId
+        "shopOrders.owner": req.userId,
+        // Only show COD orders or paid online orders
+        $or: [
+          { paymentMethod: "cod" },
+          { paymentMethod: "online", "payment.status": "paid" }
+        ]
       })
         .sort({ createdAt: -1 })
         .populate("shopOrders.shop", "name")
@@ -121,7 +127,8 @@ export const getMyOrders = async (req, res) => {
         user: order.user,
         shopOrders: order.shopOrders.find((o) => o.owner._id.toString() === req.userId),
         createdAt: order.createdAt,
-        deliveryAddress: order.deliveryAddress
+        deliveryAddress: order.deliveryAddress,
+        payment: order.payment // Include payment info for owners
       }));
 
       return res.status(200).json(filteredOrders);
@@ -473,3 +480,218 @@ export const verifyDeliveryOtp = async (req, res) => {
 
   }
 }
+
+// Initialize Safepay payment
+export const initiateSafepayPayment = async (req, res) => {
+  try {
+    const { cartItems, deliveryAddress, totalAmount } = req.body;
+
+    if (!cartItems || cartItems.length === 0) {
+      return res.status(400).json({ message: "Cart is empty" });
+    }
+    if (!deliveryAddress?.text || !deliveryAddress?.latitude || !deliveryAddress?.longitude) {
+      return res.status(400).json({ message: "Send Complete Delivery Address" });
+    }
+
+    // Get user info
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Group items by shop (same as placeOrder)
+    const groupItemsByShop = {};
+    cartItems.forEach(item => {
+      const shopId = item.shopId || (item.shop && (item.shop._id || item.shop));
+      if (!shopId) {
+        console.error('Cart item missing shop id:', item);
+        throw new Error('Cart item missing shop id');
+      }
+      const shopIdStr = shopId.toString();
+      if (!groupItemsByShop[shopIdStr]) groupItemsByShop[shopIdStr] = [];
+      groupItemsByShop[shopIdStr].push(item);
+    });
+
+    const shopOrders = await Promise.all(
+      Object.keys(groupItemsByShop).map(async (shopId) => {
+        const shop = await Shop.findById(shopId).populate('owner');
+        if (!shop) throw new Error(`Shop with id ${shopId} not found`);
+
+        const items = groupItemsByShop[shopId];
+        const subtotal = items.reduce((sum, i) => sum + Number(i.price) * Number(i.quantity), 0);
+
+        return {
+          shop: shop._id,
+          owner: shop.owner?._id,
+          subtotal,
+          shopOrderItems: items.map(i => ({
+            item: i.id,
+            price: i.price,
+            quantity: i.quantity,
+            name: i.name
+          }))
+        };
+      })
+    );
+
+    // Create order with pending payment status
+    const newOrder = await Order.create({
+      user: req.userId,
+      paymentMethod: 'online',
+      deliveryAddress,
+      totalAmount,
+      shopOrders,
+      payment: {
+        status: 'pending',
+      }
+    });
+
+    // Create Safepay payment session
+    const paymentResult = await createSafepayPayment({
+      orderId: newOrder._id.toString(),
+      amount: totalAmount,
+      customerEmail: user.email,
+      customerPhone: user.mobile || ''
+    });
+
+    if (!paymentResult.success) {
+      // Delete the order if payment session creation fails
+      await Order.findByIdAndDelete(newOrder._id);
+      return res.status(400).json({ 
+        message: "Failed to create payment session", 
+        error: paymentResult.error 
+      });
+    }
+
+    // Update order with Safepay token
+    newOrder.payment.safepayToken = paymentResult.token;
+    newOrder.payment.safepayTracker = paymentResult.token;
+    await newOrder.save();
+
+    return res.status(201).json({
+      orderId: newOrder._id,
+      checkoutUrl: paymentResult.checkoutUrl,
+      token: paymentResult.token
+    });
+
+  } catch (error) {
+    console.error('Initiate Safepay payment error:', error);
+    return res.status(500).json({ 
+      message: `Payment initiation error: ${error.message}` 
+    });
+  }
+};
+
+// Safepay webhook handler
+export const handleSafepayWebhook = async (req, res) => {
+  try {
+    console.log('Safepay webhook received:', {
+      headers: req.headers,
+      body: req.body
+    });
+
+    const webhookData = req.body;
+    
+    // Extract order ID from the webhook
+    const orderId = webhookData.tracker?.order_id || webhookData.order_id;
+    
+    if (!orderId) {
+      console.error('No order ID in webhook:', webhookData);
+      return res.status(400).json({ message: "Order ID not found in webhook" });
+    }
+
+    const order = await Order.findById(orderId)
+      .populate("shopOrders.shop", "name")
+      .populate("shopOrders.owner", "name email mobile socketId")
+      .populate("shopOrders.shopOrderItems.item", "name image price")
+      .populate("user", "name email mobile socketId");
+
+    if (!order) {
+      console.error('Order not found for webhook:', orderId);
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Check payment status from webhook
+    const paymentState = webhookData.data?.state || webhookData.state;
+    
+    if (paymentState === 'COMPLETED' || paymentState === 'completed') {
+      // Update order payment status
+      order.payment.status = 'paid';
+      order.payment.paidAt = new Date();
+      order.payment.transactionId = webhookData.data?.reference || webhookData.reference || webhookData.token;
+      await order.save();
+
+      console.log('Payment completed for order:', orderId);
+
+      // Send real-time notification to shop owners
+      const io = req.app.get('io');
+      if (io) {
+        order.shopOrders.forEach(shopOrder => {
+          const ownerSocketId = shopOrder.owner?.socketId;
+          if (ownerSocketId) {
+            io.to(ownerSocketId).emit('newOrder', {
+              _id: order._id,
+              paymentMethod: order.paymentMethod,
+              user: order.user,
+              shopOrders: shopOrder,
+              createdAt: order.createdAt,
+              deliveryAddress: order.deliveryAddress,
+              payment: order.payment
+            });
+          }
+        });
+      }
+
+      return res.status(200).json({ message: "Payment processed successfully" });
+    } else if (paymentState === 'FAILED' || paymentState === 'failed') {
+      order.payment.status = 'failed';
+      await order.save();
+      console.log('Payment failed for order:', orderId);
+      return res.status(200).json({ message: "Payment failed" });
+    }
+
+    // For other states, just acknowledge
+    return res.status(200).json({ message: "Webhook received" });
+
+  } catch (error) {
+    console.error('Safepay webhook error:', error);
+    return res.status(500).json({ 
+      message: `Webhook processing error: ${error.message}` 
+    });
+  }
+};
+
+// Verify payment status (for frontend to check)
+export const verifyPaymentStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId)
+      .populate("shopOrders.shop", "name")
+      .populate("shopOrders.shopOrderItems.item", "name image price")
+      .populate("user", "name email");
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Check if user is authorized to view this order
+    if (order.user._id.toString() !== req.userId) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    return res.status(200).json({
+      orderId: order._id,
+      paymentStatus: order.payment.status,
+      paidAt: order.payment.paidAt,
+      totalAmount: order.totalAmount,
+      order: order
+    });
+
+  } catch (error) {
+    console.error('Verify payment status error:', error);
+    return res.status(500).json({ 
+      message: `Payment verification error: ${error.message}` 
+    });
+  }
+};

@@ -18,16 +18,19 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
       baseUrl: SAFEPAY_BASE_URL
     });
 
+    // Use localhost for frontend during development, deployed backend for webhook
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const backendUrl = process.env.BACKEND_URL || "https://foodverse-59g3.onrender.com";
+    
     const payload = {
       environment: "sandbox",
       amount: amount,
       currency: "PKR",
       order_id: orderId,
       client: SAFEPAY_API_KEY,
-      redirect_url: "http://localhost:5173/order-placed",
-      cancel_url: "http://localhost:5173/checkout",
-      // TODO: Replace with ngrok URL for testing: https://YOUR-NGROK-URL.ngrok.io/api/order/safepay-webhook
-      webhook_url: "http://localhost:8000/api/order/safepay-webhook",
+      redirect_url: `${frontendUrl}/order-placed`,
+      cancel_url: `${frontendUrl}/checkout`,
+      webhook_url: `${backendUrl}/api/order/safepay-webhook`,
       source: "custom",
     };
 

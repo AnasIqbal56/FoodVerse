@@ -65,9 +65,20 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["cod"],
+      enum: ["cod", "online"],
       required: true,
       default: "cod",
+    },
+    payment: {
+      safepayToken: String,
+      safepayTracker: String,
+      status: {
+        type: String,
+        enum: ["pending", "paid", "failed"],
+        default: "pending",
+      },
+      paidAt: Date,
+      transactionId: String,
     },
     deliveryAddress: {
       text: String,

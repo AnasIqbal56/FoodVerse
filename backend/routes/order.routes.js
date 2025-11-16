@@ -6,8 +6,12 @@ import {
   getOrderById,
   placeOrder,
   updateOrderStatus,
-  getDeliveryBoyAssignment,sendDeliveryOtp,
+  getDeliveryBoyAssignment,
+  sendDeliveryOtp,
   verifyDeliveryOtp,
+  initiateSafepayPayment,
+  handleSafepayWebhook,
+  verifyPaymentStatus,
 } from "../controllers/order.controllers.js";
 import isAuth from "../middlewares/isAuth.js";
 
@@ -22,5 +26,10 @@ orderRouter.post("/send-delivery-otp", isAuth, sendDeliveryOtp);
 orderRouter.post("/verify-delivery-otp", isAuth, verifyDeliveryOtp);
 orderRouter.get("/accept-order/:assignmentId", isAuth, acceptOrder);
 orderRouter.get("/get-order-by-id/:orderId", isAuth, getOrderById);
+
+// Safepay payment routes
+orderRouter.post("/initiate-payment", isAuth, initiateSafepayPayment);
+orderRouter.post("/safepay-webhook", handleSafepayWebhook); // No auth - webhook from Safepay
+orderRouter.get("/verify-payment/:orderId", isAuth, verifyPaymentStatus);
 
 export default orderRouter;
