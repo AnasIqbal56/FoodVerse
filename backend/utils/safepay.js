@@ -45,65 +45,71 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
       backendUrl: BACKEND_URL
     });
 
-    // Determine environment from base URL
-    const environment = SAFEPAY_BASE_URL.includes('sandbox') ? 'sandbox' : 'production';
-    
     // Using Order v1 API for hosted checkout
-    // Note: SafePay API might expect different field names - adjust based on actual API response
+    // SafePay API payload structure - try different formats based on API requirements
+    // Format 1: With client field (some SafePay implementations require this)
     const payload = {
-      environment: environment,
-      amount: parseFloat(amount).toFixed(2),
+      amount: parseFloat(amount), // Number, not string
       currency: "PKR",
       order_id: orderId.toString(),
       customer_email: customerEmail,
-      client: SAFEPAY_API_KEY,
+      client: SAFEPAY_API_KEY, // API key in body (required by some SafePay versions)
       redirect_url: `${FRONTEND_URL}/order-placed`,
       cancel_url: `${FRONTEND_URL}/checkout`,
       webhook_url: `${BACKEND_URL}/api/order/safepay-webhook`,
-      source: "custom",
     };
-    
-    // Alternative payload structure if the above doesn't work
-    // Some SafePay implementations use 'api_key' instead of 'client'
-    // Uncomment and try if you get authentication errors:
-    // const payload = {
-    //   environment: environment,
-    //   amount: parseFloat(amount).toFixed(2),
-    //   currency: "PKR",
-    //   order_id: orderId.toString(),
-    //   customer_email: customerEmail,
-    //   api_key: SAFEPAY_API_KEY,
-    //   redirect_url: `${FRONTEND_URL}/order-placed`,
-    //   cancel_url: `${FRONTEND_URL}/checkout`,
-    //   webhook_url: `${BACKEND_URL}/api/order/safepay-webhook`,
-    // };
 
     // Add customer phone if provided
     if (customerPhone) {
       payload.customer_phone = customerPhone;
     }
 
-    console.log('Safepay Order v1 request payload:', { ...payload, client: '***' });
+    // Alternative payload formats (uncomment if the above doesn't work):
+    // Format 2: Without client field (if API key is only in header)
+    // const payload = {
+    //   amount: parseFloat(amount),
+    //   currency: "PKR",
+    //   order_id: orderId.toString(),
+    //   customer_email: customerEmail,
+    //   redirect_url: `${FRONTEND_URL}/order-placed`,
+    //   cancel_url: `${FRONTEND_URL}/checkout`,
+    //   webhook_url: `${BACKEND_URL}/api/order/safepay-webhook`,
+    // };
+    
+    // Format 3: With environment field
+    // const payload = {
+    //   environment: SAFEPAY_BASE_URL.includes('sandbox') ? 'sandbox' : 'production',
+    //   amount: parseFloat(amount),
+    //   currency: "PKR",
+    //   order_id: orderId.toString(),
+    //   customer_email: customerEmail,
+    //   client: SAFEPAY_API_KEY,
+    //   redirect_url: `${FRONTEND_URL}/order-placed`,
+    //   cancel_url: `${FRONTEND_URL}/checkout`,
+    //   webhook_url: `${BACKEND_URL}/api/order/safepay-webhook`,
+    // };
+
+    console.log('Safepay Order v1 request payload:', JSON.stringify(payload, null, 2));
 
     // Try different authentication methods based on SafePay API requirements
-    // Method 1: Bearer token with secret key (most common)
     let headers = {
       'Content-Type': 'application/json',
     };
     
-    // SafePay might use different auth methods - try these in order:
-    // Option 1: Bearer token with secret key
+    // SafePay authentication - try different methods
+    // Method 1: Bearer token with secret key (most common)
     if (SAFEPAY_SECRET_KEY) {
       headers['Authorization'] = `Bearer ${SAFEPAY_SECRET_KEY}`;
     }
     
-    // Option 2: Basic auth (uncomment if Bearer doesn't work)
+    // Some SafePay implementations require API key in header along with Bearer token
+    if (SAFEPAY_API_KEY) {
+      headers['X-API-Key'] = SAFEPAY_API_KEY;
+    }
+    
+    // Alternative: Basic auth (uncomment if Bearer doesn't work)
     // const authString = Buffer.from(`${SAFEPAY_API_KEY}:${SAFEPAY_SECRET_KEY}`).toString('base64');
     // headers['Authorization'] = `Basic ${authString}`;
-    
-    // Option 3: API key in header (uncomment if needed)
-    // headers['X-API-Key'] = SAFEPAY_API_KEY;
-    // headers['X-API-Secret'] = SAFEPAY_SECRET_KEY;
 
     console.log('Making request to:', `${SAFEPAY_BASE_URL}/order/v1/init`);
     console.log('Request headers:', { ...headers, Authorization: headers.Authorization ? 'Bearer ***' : 'none' });
@@ -131,8 +137,49 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
     // Check for error responses
     if (response.status >= 400) {
       const errorData = response.data || {};
-      const errorMsg = errorData.message || errorData.error || errorData.error_message || `HTTP ${response.status}: ${response.statusText}`;
-      throw new Error(`SafePay API error: ${errorMsg}. Status: ${response.status}`);
+      const statusData = errorData.status || {};
+      const errors = statusData.errors || errorData.errors || [];
+      
+      console.error('SafePay API Error Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: errorData,
+        errors: errors,
+        errorsArray: Array.isArray(errors) ? errors : 'Not an array',
+        fullResponse: JSON.stringify(response.data, null, 2)
+      });
+      
+      // Log the errors array in detail
+      if (Array.isArray(errors) && errors.length > 0) {
+        console.error('Validation Errors:', errors);
+      }
+      
+      // Extract detailed error message from errors array
+      let errorMsg = `HTTP ${response.status}: ${response.statusText}`;
+      
+      if (Array.isArray(errors) && errors.length > 0) {
+        // Extract error messages from the errors array
+        const errorMessages = errors.map(err => {
+          if (typeof err === 'string') return err;
+          if (err.message) return err.message;
+          if (err.field && err.message) return `${err.field}: ${err.message}`;
+          if (err.field && err.error) return `${err.field}: ${err.error}`;
+          return JSON.stringify(err);
+        });
+        errorMsg = errorMessages.join('; ') || statusData.message || errorMsg;
+      } else if (statusData.message) {
+        errorMsg = statusData.message;
+      } else if (errorData.message) {
+        errorMsg = errorData.message;
+      } else if (errorData.error) {
+        errorMsg = typeof errorData.error === 'string' ? errorData.error : JSON.stringify(errorData.error);
+      } else if (errorData.error_message) {
+        errorMsg = errorData.error_message;
+      } else if (typeof errorData === 'string') {
+        errorMsg = errorData;
+      }
+      
+      throw new Error(`SafePay API error: ${errorMsg}. Status: ${response.status}. Errors: ${JSON.stringify(errors)}`);
     }
 
     // Extract token from response (handle different response structures)
