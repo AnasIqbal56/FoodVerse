@@ -49,6 +49,7 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
     const environment = SAFEPAY_BASE_URL.includes('sandbox') ? 'sandbox' : 'production';
     
     // Using Order v1 API for hosted checkout
+    // Note: SafePay API might expect different field names - adjust based on actual API response
     const payload = {
       environment: environment,
       amount: parseFloat(amount).toFixed(2),
@@ -61,6 +62,21 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
       webhook_url: `${BACKEND_URL}/api/order/safepay-webhook`,
       source: "custom",
     };
+    
+    // Alternative payload structure if the above doesn't work
+    // Some SafePay implementations use 'api_key' instead of 'client'
+    // Uncomment and try if you get authentication errors:
+    // const payload = {
+    //   environment: environment,
+    //   amount: parseFloat(amount).toFixed(2),
+    //   currency: "PKR",
+    //   order_id: orderId.toString(),
+    //   customer_email: customerEmail,
+    //   api_key: SAFEPAY_API_KEY,
+    //   redirect_url: `${FRONTEND_URL}/order-placed`,
+    //   cancel_url: `${FRONTEND_URL}/checkout`,
+    //   webhook_url: `${BACKEND_URL}/api/order/safepay-webhook`,
+    // };
 
     // Add customer phone if provided
     if (customerPhone) {
@@ -69,32 +85,66 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
 
     console.log('Safepay Order v1 request payload:', { ...payload, client: '***' });
 
+    // Try different authentication methods based on SafePay API requirements
+    // Method 1: Bearer token with secret key (most common)
+    let headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    // SafePay might use different auth methods - try these in order:
+    // Option 1: Bearer token with secret key
+    if (SAFEPAY_SECRET_KEY) {
+      headers['Authorization'] = `Bearer ${SAFEPAY_SECRET_KEY}`;
+    }
+    
+    // Option 2: Basic auth (uncomment if Bearer doesn't work)
+    // const authString = Buffer.from(`${SAFEPAY_API_KEY}:${SAFEPAY_SECRET_KEY}`).toString('base64');
+    // headers['Authorization'] = `Basic ${authString}`;
+    
+    // Option 3: API key in header (uncomment if needed)
+    // headers['X-API-Key'] = SAFEPAY_API_KEY;
+    // headers['X-API-Secret'] = SAFEPAY_SECRET_KEY;
+
+    console.log('Making request to:', `${SAFEPAY_BASE_URL}/order/v1/init`);
+    console.log('Request headers:', { ...headers, Authorization: headers.Authorization ? 'Bearer ***' : 'none' });
+
     const response = await axios.post(
       `${SAFEPAY_BASE_URL}/order/v1/init`,
       payload,
       {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SAFEPAY_SECRET_KEY}`,
-        },
+        headers: headers,
         timeout: 30000, // 30 second timeout
+        validateStatus: function (status) {
+          // Don't throw error for 4xx/5xx, we'll handle it manually
+          return status >= 200 && status < 600;
+        }
       }
     );
 
     console.log('Safepay Order v1 response:', {
       status: response.status,
-      data: response.data
+      statusText: response.statusText,
+      data: response.data,
+      headers: response.headers
     });
+
+    // Check for error responses
+    if (response.status >= 400) {
+      const errorData = response.data || {};
+      const errorMsg = errorData.message || errorData.error || errorData.error_message || `HTTP ${response.status}: ${response.statusText}`;
+      throw new Error(`SafePay API error: ${errorMsg}. Status: ${response.status}`);
+    }
 
     // Extract token from response (handle different response structures)
     const token = response.data?.data?.token || 
                   response.data?.token || 
                   response.data?.tracker ||
-                  response.data?.data?.tracker;
+                  response.data?.data?.tracker ||
+                  response.data?.data?.tracker_id;
     
     if (!token) {
       console.error('Safepay response structure:', JSON.stringify(response.data, null, 2));
-      throw new Error('No token received from Safepay. Check API response structure.');
+      throw new Error('No token received from Safepay. Check API response structure. Response: ' + JSON.stringify(response.data));
     }
 
     // Construct checkout URL - SafePay uses tracker parameter in query string
@@ -120,20 +170,42 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
 
     // Return user-friendly error messages
     let errorMessage = error.message;
-    if (error.response?.data) {
-      if (typeof error.response.data === 'string') {
-        errorMessage = error.response.data;
-      } else if (error.response.data.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.response.data.error) {
-        errorMessage = error.response.data.error;
+    let errorDetails = null;
+    
+    if (error.response) {
+      errorDetails = {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        headers: error.response.headers
+      };
+      
+      if (error.response.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          errorMessage = typeof error.response.data.error === 'string' 
+            ? error.response.data.error 
+            : error.response.data.error.message || JSON.stringify(error.response.data.error);
+        } else if (error.response.data.error_message) {
+          errorMessage = error.response.data.error_message;
+        }
       }
+    } else if (error.request) {
+      // Request was made but no response received
+      errorMessage = 'No response from SafePay API. Check network connectivity and API endpoint.';
+      errorDetails = {
+        message: 'Network error - no response received',
+        url: error.config?.url
+      };
     }
 
     return {
       success: false,
       error: errorMessage,
-      details: error.response?.data || null,
+      details: errorDetails,
     };
   }
 };

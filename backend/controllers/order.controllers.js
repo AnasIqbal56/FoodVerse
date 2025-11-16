@@ -557,9 +557,14 @@ export const initiateSafepayPayment = async (req, res) => {
     if (!paymentResult.success) {
       // Delete the order if payment session creation fails
       await Order.findByIdAndDelete(newOrder._id);
+      console.error('Payment session creation failed:', {
+        error: paymentResult.error,
+        details: paymentResult.details
+      });
       return res.status(400).json({ 
         message: "Failed to create payment session", 
-        error: paymentResult.error 
+        error: paymentResult.error,
+        details: paymentResult.details || null
       });
     }
 
