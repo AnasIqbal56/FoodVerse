@@ -59,8 +59,9 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
 
     // The tracker token from the response - ask Safepay support for correct checkout URL
     // Try this format based on typical payment gateway patterns
-    const checkoutUrl = `https://sandbox.api.getsafepay.com/checkout/pay/${token}`;
+    // const checkoutUrl = `https://sandbox.api.getsafepay.com/checkout/pay/${token}`;
 
+   const checkoutUrl = `https://sandbox.getsafepay.com/pay/${token}`;
     return {
       success: true,
       data: response.data,
