@@ -45,15 +45,18 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
       backendUrl: BACKEND_URL
     });
 
+    // Determine environment from base URL
+    const environment = SAFEPAY_BASE_URL.includes('sandbox') ? 'sandbox' : 'production';
+    
     // Using Order v1 API for hosted checkout
-    // SafePay API payload structure - try different formats based on API requirements
-    // Format 1: With client field (some SafePay implementations require this)
+    // SafePay API requires 'environment' field in the payload
     const payload = {
+      environment: environment, // Required field - must be 'sandbox' or 'production'
       amount: parseFloat(amount), // Number, not string
       currency: "PKR",
       order_id: orderId.toString(),
       customer_email: customerEmail,
-      client: SAFEPAY_API_KEY, // API key in body (required by some SafePay versions)
+      client: SAFEPAY_API_KEY, // API key in body (required)
       redirect_url: `${FRONTEND_URL}/order-placed`,
       cancel_url: `${FRONTEND_URL}/checkout`,
       webhook_url: `${BACKEND_URL}/api/order/safepay-webhook`,
