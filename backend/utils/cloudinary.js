@@ -9,13 +9,30 @@ const uploadOnCloudinary = async (file) => {
 });
 
 try{
+    // Check if file exists before uploading
+    if (!fs.existsSync(file)) {
+        console.error('File does not exist:', file);
+        throw new Error(`File not found: ${file}`);
+    }
+    
     const result= await cloudinary.uploader.upload(file)
-    fs.unlinkSync(file)
+    
+    // Delete file after successful upload
+    if (fs.existsSync(file)) {
+        fs.unlinkSync(file)
+    }
+    
     return result.secure_url
 }
 catch (error){
-    fs.unlinkSync(file)
-    console.log(error)
+    console.error('Cloudinary upload error:', error)
+    
+    // Clean up file if it exists
+    if (fs.existsSync(file)) {
+        fs.unlinkSync(file)
+    }
+    
+    throw error; // Re-throw to let controller handle it
 }
 }
 
