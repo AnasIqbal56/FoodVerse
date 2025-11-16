@@ -197,8 +197,8 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
       throw new Error('No token received from Safepay. Check API response structure. Response: ' + JSON.stringify(response.data));
     }
 
-    // Construct checkout URL - SafePay uses tracker parameter in query string
-    const checkoutUrl = `${SAFEPAY_BASE_URL}/checkout?tracker=${token}`;
+    // Construct checkout URL - SafePay requires both tracker and environment parameters
+    const checkoutUrl = `${SAFEPAY_BASE_URL}/checkout?tracker=${token}&environment=${environment}`;
 
     return {
       success: true,
