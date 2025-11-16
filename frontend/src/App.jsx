@@ -25,7 +25,9 @@ import Shop from "./pages/Shop.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import AIWorld from "./pages/AIWorld.jsx";
 
-export const serverUrl =  "https://foodverse-59g3.onrender.com";
+//export const serverUrl =  "https://foodverse-59g3.onrender.com";
+
+export const serverUrl =  "http://localhost:8000";
 
 function App() {
   const dispatch = useDispatch();
