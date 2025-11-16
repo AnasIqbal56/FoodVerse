@@ -35,6 +35,10 @@ function SignUp() {
       dispatch(setUserData(result.data));
       setErr("");
       setLoading(false);
+      
+      setTimeout(() => {
+        navigate("/home", { replace: true });
+      }, 0);
     } catch (error) {
       setErr(error?.response?.data?.message);
       setLoading(false);
@@ -43,19 +47,30 @@ function SignUp() {
 
   const handleGoogleAuth = async () => {
     if (!mobile) return setErr("Mobile number is required");
-    const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
+    setLoading(true);
+    setErr("");
     try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
       const { data } = await axios.post(`${serverUrl}/api/auth/google-auth`, {
         fullName: result.user.displayName,
         email: result.user.email,
         role,
         mobile
       }, { withCredentials: true });
-      dispatch(setUserData(data));
-      setErr("");
+      
+      // Set user data and wait for next tick before navigating
+      // Backend returns { message, user } so extract the user
+      dispatch(setUserData(data.user || data));
+      setLoading(false);
+      
+      // Use setTimeout to ensure state update completes
+      setTimeout(() => {
+        navigate("/home", { replace: true });
+      }, 0);
     } catch (error) {
-      console.log(error);
+      setErr(error?.response?.data?.message || "Google authentication failed");
+      setLoading(false);
     }
   };
 

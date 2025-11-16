@@ -25,7 +25,7 @@ import Shop from "./pages/Shop.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import AIWorld from "./pages/AIWorld.jsx";
 
-//export const serverUrl =  "https://foodverse-59g3.onrender.com";
+// export const serverUrl =  "https://foodverse-59g3.onrender.com";
 
 export const serverUrl =  "http://localhost:8000";
 
@@ -55,57 +55,57 @@ function App() {
       {/* Auth Pages */}
       <Route
         path="/signin"
-        element={!userData ? <SignIn /> : <Navigate to="/home" />}
+        element={!userData ? <SignIn /> : <Navigate to="/home" replace />}
       />
       <Route
         path="/signup"
-        element={!userData ? <SignUp /> : <Navigate to="/home" />}
+        element={!userData ? <SignUp /> : <Navigate to="/home" replace />}
       />
       <Route
         path="/forgot-password"
-        element={!userData ? <ForgotPassword /> : <Navigate to="/home" />}
+        element={!userData ? <ForgotPassword /> : <Navigate to="/home" replace />}
       />
 
       {/* Protected Routes */}
       <Route
         path="/home"
-        element={userData ? <Home /> : <Navigate to="/signin" />}
+        element={userData ? <Home /> : <Navigate to="/signin" replace />}
       />
       <Route
         path="/create-edit-shop"
-        element={userData ? <CreateEditShop /> : <Navigate to="/signin" />}
+        element={userData ? <CreateEditShop /> : <Navigate to="/signin" replace />}
       />
       <Route
         path="/add-item"
-        element={userData ? <AddItem /> : <Navigate to="/signin" />}
+        element={userData ? <AddItem /> : <Navigate to="/signin" replace />}
       />
       <Route
         path="/edit-item/:itemId"
-        element={userData ? <EditItem /> : <Navigate to="/signin" />}
+        element={userData ? <EditItem /> : <Navigate to="/signin" replace />}
       />
       <Route
         path="/cart"
-        element={userData ? <CartPage /> : <Navigate to="/signin" />}
+        element={userData ? <CartPage /> : <Navigate to="/signin" replace />}
       />
       <Route
         path="/checkout"
-        element={userData ? <CheckOut /> : <Navigate to="/signin" />}
+        element={userData ? <CheckOut /> : <Navigate to="/signin" replace />}
       />
       <Route
         path="/order-placed"
-        element={userData ? <OrderPlaced /> : <Navigate to="/signin" />}
+        element={userData ? <OrderPlaced /> : <Navigate to="/signin" replace />}
       />
       <Route
         path="/my-orders"
-        element={userData ? <MyOrders /> : <Navigate to="/signin" />}
+        element={userData ? <MyOrders /> : <Navigate to="/signin" replace />}
       />
       <Route
         path="/track-order/:orderId"
-        element={userData ? <TrackOrderPage /> : <Navigate to="/signin" />}
+        element={userData ? <TrackOrderPage /> : <Navigate to="/signin" replace />}
       />
       <Route
         path="/shop/:shopId"
-        element={userData ? <Shop /> : <Navigate to="/signin" />}
+        element={userData ? <Shop /> : <Navigate to="/signin" replace />}
       />
        <Route path="/ai-world" 
        element={<AIWorld />} 

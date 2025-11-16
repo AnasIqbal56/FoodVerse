@@ -36,7 +36,7 @@ function MyOrders() {
     <div className="w-full min-h-screen flex justify-center bg-[#fff9f6] px-4">
       <div className="w-full max-w-[800px] p-4">
         <div className="flex items-center gap-[20px] mb-6">
-          <div className="z-[10]" onClick={() => navigate("/")}>
+          <div className="z-[10]" onClick={() => navigate("/home")}>
             <IoIosArrowRoundBack size={35} className="text-[#ff4d2d]" />
           </div>
           <h1 className="text-2xl font-bold text-start">My Orders</h1>

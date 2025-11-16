@@ -106,7 +106,7 @@ function EditItem() {
         <IoIosArrowRoundBack
           size={35}
           className="text-[#ff4d2d] cursor-pointer"
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/home")}
         />
       </div>
 

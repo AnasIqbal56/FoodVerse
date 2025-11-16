@@ -32,7 +32,10 @@ export default function SignIn() {
       dispatch(setUserData(data));
       setErr("");
       setLoading(false);
-      navigate("/");
+      
+      setTimeout(() => {
+        navigate("/home", { replace: true });
+      }, 0);
     } catch (error) {
       setErr(error?.response?.data?.message || "Sign in failed");
       setLoading(false);
@@ -40,6 +43,8 @@ export default function SignIn() {
   };
 
   const handleGoogleAuth = async () => {
+    setLoading(true);
+    setErr("");
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
@@ -50,10 +55,18 @@ export default function SignIn() {
         { withCredentials: true }
       );
 
-      dispatch(setUserData(data));
-      navigate("/");
+      // Set user data and wait for next tick before navigating
+      // Backend returns { message, user } so extract the user
+      dispatch(setUserData(data.user || data));
+      setLoading(false);
+      
+      // Use setTimeout to ensure state update completes
+      setTimeout(() => {
+        navigate("/home", { replace: true });
+      }, 0);
     } catch (error) {
       setErr("Google authentication failed");
+      setLoading(false);
     }
   };
 

@@ -35,7 +35,7 @@ function TrackOrderPage() {
         <IoIosArrowRoundBack
           size={35}
           className="text-[#ff4d2d] cursor-pointer"
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/home")}
         />
         <h1 className="text-2xl font-semibold md:text-center">Track Order</h1>
       </div>

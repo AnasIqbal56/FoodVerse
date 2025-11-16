@@ -13,7 +13,7 @@ function CartPage() {
         <div className="flex items-center gap-[20px] mb-6">
           <div
             className="z-[10]"
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/home")}
           >
             <IoIosArrowRoundBack size={35} className="text-[#ff4d2d]" />
           </div>
