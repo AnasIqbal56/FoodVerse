@@ -6,7 +6,7 @@ const SAFEPAY_BASE_URL = process.env.SAFEPAY_BASE_URL || 'https://sandbox.api.ge
 const SAFEPAY_API_KEY = process.env.SAFEPAY_API_KEY;
 const SAFEPAY_SECRET_KEY = process.env.SAFEPAY_SECRET_KEY;
 
-// Create payment session with Safepay
+// Create payment session with Safepay using Order v1 API (Legacy but with hosted checkout)
 export const createSafepayPayment = async ({ orderId, amount, customerEmail, customerPhone }) => {
   try {
     console.log('Creating Safepay payment with:', {
@@ -22,6 +22,7 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     const backendUrl = process.env.BACKEND_URL || "https://foodverse-59g3.onrender.com";
     
+    // Using Order v1 API for hosted checkout
     const payload = {
       environment: "sandbox",
       amount: amount,
@@ -34,7 +35,7 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
       source: "custom",
     };
 
-    console.log('Safepay request payload:', payload);
+    console.log('Safepay Order v1 request payload:', payload);
 
     const response = await axios.post(
       `${SAFEPAY_BASE_URL}/order/v1/init`,
@@ -46,16 +47,17 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
       }
     );
 
-    console.log('Safepay response:', response.data);
+    console.log('Safepay Order v1 response:', response.data);
 
     const token = response.data.data?.token || response.data.token;
     
-    // Try different Safepay checkout URL formats
-    // Format 1: Direct checkout with tracker
-    const checkoutUrl = `https://sandbox.getsafepay.com/checkout/pay?tracker=${token}`;
-    
-    // Alternative format if above doesn't work:
-    // const checkoutUrl = `https://sandbox.api.getsafepay.com/checkout/${token}`;
+    if (!token) {
+      throw new Error('No token received from Safepay');
+    }
+
+    // The tracker token from the response - ask Safepay support for correct checkout URL
+    // Try this format based on typical payment gateway patterns
+    const checkoutUrl = `https://sandbox.getsafepay.com/checkout/${token}`;
 
     return {
       success: true,
