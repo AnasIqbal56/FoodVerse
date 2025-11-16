@@ -20,7 +20,7 @@ const server=http.createServer(app)
 
 const io=new Server(server,{
   cors:{
-  origin: true,
+  origin: "https://tamera-axenic-matteo.ngrok-free.dev",
   // [
   //   "http://localhost:5173",
   //   "http://localhost:5174"
