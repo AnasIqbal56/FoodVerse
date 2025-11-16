@@ -123,7 +123,12 @@ function CheckOut() {
         // Store order ID in localStorage to verify after payment
         localStorage.setItem('pendingOrderId', result.data.orderId);
         
-        // Redirect to Safepay checkout page
+        // Log checkout URL for debugging
+        console.log('Redirecting to SafePay checkout:', result.data.checkoutUrl);
+        console.log('Order ID:', result.data.orderId);
+        
+        // Redirect to Safepay checkout page (SafePay's hosted checkout)
+        // Try window.location.href first - some browsers handle this better
         window.location.href = result.data.checkoutUrl;
       }
     } catch (error) {
