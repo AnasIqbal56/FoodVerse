@@ -19,8 +19,8 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
     });
 
     // Use localhost for frontend during development, deployed backend for webhook
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-    const backendUrl = process.env.BACKEND_URL || "https://foodverse-59g3.onrender.com";
+    const frontendUrl = "http://localhost:5173";
+    const backendUrl = "https://foodverse-59g3.onrender.com";
     
     // Using Order v1 API for hosted checkout
     const payload = {
@@ -57,7 +57,7 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
 
     // The tracker token from the response - ask Safepay support for correct checkout URL
     // Try this format based on typical payment gateway patterns
-    const checkoutUrl = `https://sandbox.getsafepay.com/checkout/${token}`;
+    const checkoutUrl = `https://sandbox.getsafepay.com/checkout/pay/${token}`;
 
     return {
       success: true,
