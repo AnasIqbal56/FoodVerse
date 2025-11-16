@@ -40,12 +40,17 @@ app.set("io",io)
 
 const port = process.env.PORT || 5000
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:5174"
-  ],
+  origin: "*",
+  // [
+  //   "http://localhost:5173",
+  //   "http://localhost:5174"
+  // ],
   credentials: true
 }));
+app.use((req, res, next) => {
+        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups'); // Or 'same-origin-allow-popups'
+        next();
+    });
 
 app.use(express.json())
 app.use(cookieParser())
