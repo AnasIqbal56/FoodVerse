@@ -28,6 +28,7 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
       amount: amount,
       currency: "PKR",
       order_id: orderId,
+      customer_email: customerEmail,
       client: SAFEPAY_API_KEY,
       redirect_url: `${frontendUrl}/order-placed`,
       cancel_url: `${frontendUrl}/checkout`,
@@ -43,6 +44,7 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
       {
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${SAFEPAY_SECRET_KEY}`,
         },
       }
     );
@@ -57,7 +59,7 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
 
     // The tracker token from the response - ask Safepay support for correct checkout URL
     // Try this format based on typical payment gateway patterns
-    const checkoutUrl = `https://sandbox.getsafepay.com/checkout/pay/${token}`;
+    const checkoutUrl = `https://sandbox.api.getsafepay.com/checkout/pay/${token}`;
 
     return {
       success: true,
