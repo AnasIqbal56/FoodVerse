@@ -30,6 +30,8 @@ export default function SignIn() {
         { withCredentials: true }
       );
       dispatch(setUserData(data));
+      // Clear logout flag on successful login
+      localStorage.removeItem('hasLoggedOut');
       setErr("");
       setLoading(false);
       
@@ -58,6 +60,8 @@ export default function SignIn() {
       // Set user data and wait for next tick before navigating
       // Backend returns { message, user } so extract the user
       dispatch(setUserData(data.user || data));
+      // Clear logout flag on successful login
+      localStorage.removeItem('hasLoggedOut');
       setLoading(false);
       
       // Use setTimeout to ensure state update completes

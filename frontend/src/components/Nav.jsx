@@ -10,6 +10,8 @@ import { RxCross1 } from "react-icons/rx";
 import { LuReceipt } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
 import { setSearchItems } from "../redux/userSlice";
+import { signOut } from "firebase/auth";
+import { auth } from "../../firebase";
 
 function Nav() {
   const { userData, currentCity, cartItems } = useSelector((state) => state.user);
@@ -25,8 +27,16 @@ function Nav() {
 
   const handleLogout = async () => {
     try {
+      // Sign out from Firebase first
+      await signOut(auth);
+      // Then clear backend session
       await axios.get(`${serverUrl}/api/auth/signout`, { withCredentials: true });
+      // Clear Redux state
       dispatch(setUserData(null));
+      // Set logout flag to prevent auto-login
+      localStorage.setItem('hasLoggedOut', 'true');
+      // Navigate to sign in page
+      navigate("/signin", { replace: true });
     } catch (error) {
       console.log(error);
     }

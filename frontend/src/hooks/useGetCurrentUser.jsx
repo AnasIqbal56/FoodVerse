@@ -16,6 +16,12 @@ function useGetCurrentUser() {
       return;
     }
     
+    // Check if user has explicitly logged out
+    const hasLoggedOut = localStorage.getItem('hasLoggedOut');
+    if (hasLoggedOut === 'true') {
+      return; // Don't auto-fetch after logout
+    }
+    
     if (hasFetched.current) return;
 
     hasFetched.current = true;
