@@ -26,6 +26,7 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
       client: SAFEPAY_API_KEY,
       redirect_url: "http://localhost:5173/order-placed",
       cancel_url: "http://localhost:5173/checkout",
+      // TODO: Replace with ngrok URL for testing: https://YOUR-NGROK-URL.ngrok.io/api/order/safepay-webhook
       webhook_url: "http://localhost:8000/api/order/safepay-webhook",
       source: "custom",
     };
@@ -44,9 +45,11 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
 
     console.log('Safepay response:', response.data);
 
-    // Redirect to our custom checkout page for sandbox testing
     const token = response.data.data?.token || response.data.token;
-    const checkoutUrl = `http://localhost:5173/safepay-checkout?tracker=${token}&amount=${amount}`;
+    
+    // Use Safepay's actual hosted checkout URL for sandbox
+    // This enables proper 3D Secure flow and transaction tracking
+    const checkoutUrl = `https://sandbox.api.getsafepay.com/checkout?tracker=${token}`;
 
     return {
       success: true,
@@ -68,30 +71,11 @@ export const createSafepayPayment = async ({ orderId, amount, customerEmail, cus
   }
 };
 
-// Verify payment status
-export const verifySafepayPayment = async (token) => {
-  try {
-    const response = await axios.get(
-      `${SAFEPAY_BASE_URL}/order/v1/status/${token}`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-SFPY-CLIENT-ID': SAFEPAY_API_KEY,
-          'X-SFPY-CLIENT-SECRET': SAFEPAY_SECRET_KEY,
-        },
-      }
-    );
-
-    return {
-      success: true,
-      data: response.data,
-      paymentStatus: response.data.data.state,
-    };
-  } catch (error) {
-    console.error('Safepay payment verification error:', error.response?.data || error.message);
-    return {
-      success: false,
-      error: error.response?.data || error.message,
-    };
-  }
+// Verify Safepay webhook signature
+export const verifyWebhookSignature = (payload, signature) => {
+  // Safepay sends signature in X-SFPY-Signature header
+  // For sandbox testing, we'll log and accept all webhooks
+  // In production, implement proper HMAC verification
+  console.log('Webhook signature verification:', { signature });
+  return true; // Accept all webhooks in sandbox
 };

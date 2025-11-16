@@ -24,7 +24,6 @@ import TrackOrderPage from "./pages/TrackOrderPage.jsx";
 import Shop from "./pages/Shop.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import AIWorld from "./pages/AIWorld.jsx";
-import SafepayCheckout from "./pages/SafepayCheckout.jsx";
 
 export const serverUrl = "http://localhost:8000";
 
@@ -93,10 +92,6 @@ function App() {
       <Route
         path="/order-placed"
         element={userData ? <OrderPlaced /> : <Navigate to="/signin" />}
-      />
-      <Route
-        path="/safepay-checkout"
-        element={userData ? <SafepayCheckout /> : <Navigate to="/signin" />}
       />
       <Route
         path="/my-orders"

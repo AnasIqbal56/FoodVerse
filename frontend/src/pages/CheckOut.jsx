@@ -75,12 +75,6 @@ function CheckOut() {
   };
 
   const handlePlaceOrder = async () => {
-    console.log('=== PLACE ORDER CLICKED ===');
-    console.log('Payment Method:', paymentMethod);
-    console.log('Total Amount:', totalAmount);
-    console.log('Amount with Delivery:', AmountWithDeliveryFee);
-    console.log('Cart Items:', cartItems);
-    
     // Validate before processing
     if (!addressInput || addressInput.trim() === '') {
       alert('Please enter a delivery address');
@@ -101,10 +95,8 @@ function CheckOut() {
     
     try {
       if (paymentMethod === 'cod') {
-        console.log('Processing COD payment...');
-        // Cash on Delivery - existing flow
         const result = await axios.post(`${serverUrl}/api/order/place-order`, {
-          paymentMethod,
+          paymentMethod: 'cod',
           deliveryAddress: {
             text: addressInput,
             latitude: location.lat,
@@ -114,59 +106,20 @@ function CheckOut() {
           cartItems
         }, { withCredentials: true });
         
-        console.log('COD Order placed:', result.data);
         dispatch(addMyOrder(result.data));
         navigate("/order-placed");
       } else if (paymentMethod === 'online') {
-        console.log('Processing ONLINE payment...');
-        console.log('Calling create-payment-session API...');
-        
-        // Online Payment - Safepay flow
-        const result = await axios.post(`${serverUrl}/api/order/create-payment-session`, {
-          deliveryAddress: {
-            text: addressInput,
-            latitude: location.lat,
-            longitude: location.lon,
-          },
-          totalAmount,
-          cartItems
-        }, { withCredentials: true });
-
-        console.log('Payment session created:', result.data);
-        console.log('Checkout URL:', result.data.checkoutUrl);
-
-        // Store order ID in localStorage for verification after payment
-        localStorage.setItem('pendingOrderId', result.data.orderId);
-        localStorage.setItem('paymentToken', result.data.token);
-
-        console.log('Stored in localStorage:', {
-          orderId: result.data.orderId,
-          token: result.data.token
-        });
-
-        // Extract tracker and amount from checkoutUrl
-        const url = new URL(result.data.checkoutUrl);
-        const tracker = url.searchParams.get('tracker');
-        const amount = url.searchParams.get('amount');
-
-        // Navigate to Safepay checkout using React Router
-        console.log('Navigating to safepay-checkout with:', { tracker, amount });
-        navigate(`/safepay-checkout?tracker=${tracker}&amount=${amount}`);
+        alert('Online payment will be implemented soon with proper webhook support!');
       }
     } catch (error) {
-      console.error('=== PLACE ORDER ERROR ===');
-      console.error('Error details:', error.response?.data || error.message);
-      console.error('Full error:', error);
+      console.error('Place order error:', error);
       
-      // Provide user-friendly error messages
       let errorMessage = 'Failed to place order. Please try again.';
       
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message === 'Network Error') {
         errorMessage = 'Network error. Please check your internet connection.';
-      } else if (error.code === 'ECONNABORTED') {
-        errorMessage = 'Request timeout. Please try again.';
       }
       
       alert(errorMessage);
@@ -248,10 +201,11 @@ function CheckOut() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div
-              className={`border p-4 rounded-xl flex items-center gap-3 text-left transition ${paymentMethod === 'cod'
+              className={`border p-4 rounded-xl flex items-center gap-3 text-left transition cursor-pointer ${paymentMethod === 'cod'
                   ? 'border-orange-500 bg-orange-50 shadow'
                   : 'border-gray-200 hover:border-gray-300'
-                }`} onClick={() => setPaymentMethod('cod')}
+                }`}
+              onClick={() => setPaymentMethod('cod')}
             >
               <span className="inline-flex items-center h-10 w-10 justify-center rounded-full bg-green-100">
                 <MdDeliveryDining className='text-xl text-green-600' />
@@ -262,28 +216,24 @@ function CheckOut() {
               </div>
             </div>
 
-
             <div
-              className={`border p-4 rounded-xl flex items-center gap-3 text-left transition ${paymentMethod === 'online'
+              className={`border p-4 rounded-xl flex items-center gap-3 text-left transition cursor-pointer ${paymentMethod === 'online'
                   ? 'border-orange-500 bg-orange-50 shadow'
                   : 'border-gray-200 hover:border-gray-300'
-                }`} onClick={() => setPaymentMethod('online')}
+                }`}
+              onClick={() => setPaymentMethod('online')}
             >
               <span className="inline-flex items-center h-10 w-10 justify-center rounded-full bg-purple-100">
                 <FaMobileButton className="text-lg text-purple-600" />
-
               </span>
-
               <span className="inline-flex items-center h-10 w-10 justify-center rounded-full bg-blue-100">
                 <FaCreditCard className="text-lg text-blue-600" />
-
               </span>
               <div>
-                <p className="font-medium text-gray-800">UPI / Credit / Debit </p>
+                <p className="font-medium text-gray-800">Online Payment</p>
                 <p className="text-xs text-gray-500">Pay securely online.</p>
               </div>
             </div>
-
           </div>
         </section>
 
@@ -332,7 +282,7 @@ function CheckOut() {
               Processing...
             </span>
           ) : (
-            paymentMethod === "cod" ? "Place Order" : "Pay & Place Order"
+            paymentMethod === 'cod' ? 'Place Order' : 'Pay & Place Order'
           )}
         </button>
 

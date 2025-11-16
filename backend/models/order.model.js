@@ -65,8 +65,9 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["cod", "online"],
+      enum: ["cod"],
       required: true,
+      default: "cod",
     },
     deliveryAddress: {
       text: String,
@@ -77,21 +78,6 @@ const orderSchema = new mongoose.Schema(
       type: Number,
     },
     shopOrders: [shopOrderSchema],
-    payment: {
-      status: {
-        type: String,
-        enum: ["pending", "completed", "failed"],
-        default: "pending",
-      },
-      token: {
-        type: String,
-        default: null,
-      },
-      paidAt: {
-        type: Date,
-        default: null,
-      },
-    },
   },
   { timestamps: true }
 );
