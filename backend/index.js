@@ -60,7 +60,9 @@ app.use ("/api/item",itemRouter)
 app.use ("/api/order",orderRouter)
 app.use ("/api/contact",contactRouter)
 socketHandler(io)
-server.listen(port, () => {
-    connectDb()
-  console.log(`Server is running on port ${port}`);
-});
+// server.listen(port, () => {
+//     connectDb()
+//   console.log(`Server is running on port ${port}`);
+// });
+
+export default server;
