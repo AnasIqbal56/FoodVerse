@@ -56,7 +56,7 @@ function AddItem() {
                 {withCredentials:true})
                 dispatch(setMyShopData(result.data))
                 setLoading(false)
-                navigate("/")
+                navigate("/home")
         } catch (error) {
             console.log(error)
             setLoading(false)

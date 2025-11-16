@@ -35,96 +35,141 @@ function OwnerOrderCard({ data }) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-4 space-y-4">
-      {/* USER INFO */}
-      <div>
-        <h2 className="text-lg font-semibold text-gray-800">
-          {data?.user?.fullName}
-        </h2>
-        <p className="text-sm text-gray-500">{data?.user?.email}</p>
-        <p className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-          <MdPhone className="text-gray-500" />
-          <span>{data?.user?.mobile}</span>
-        </p>
-      </div>
-
-      {/* ADDRESS INFO */}
-      <div className="flex items-start flex-col gap-2 text-sm text-gray-600">
-        <p>{data?.deliveryAddress?.text}</p>
-        <p>
-          <span className="font-medium text-xs">Lat:</span>{" "}
-          {data?.deliveryAddress?.latitude},{" "}
-          <span className="font-medium text-xs">Lon:</span>{" "}
-          {data?.deliveryAddress?.longitude}
-        </p>
-      </div>
-
-      {/* ITEMS */}
-      <div className="flex flex-wrap gap-3">
-        {shopOrder?.shopOrderItems?.map((item, idx) => (
-          <div
-            key={idx}
-            className="flex-shrink-0 w-40 border rounded-lg p-2 bg-white shadow-sm"
-          >
-            <img
-              src={item?.item?.image}
-              alt={item?.item?.name || ""}
-              className="w-full h-24 object-cover rounded"
-            />
-            <p className="text-sm font-semibold mt-1">
-              {item?.item?.name || "Product"}
-            </p>
-            <p className="text-xs text-gray-500">
-              Qty: {item?.quantity} × ₹{item?.item?.price}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* STATUS + TOTAL */}
-      <div className="flex justify-between items-center mt-auto pt-3 border-t border-gray-100">
-        <span className="text-sm">
-          Status:{" "}
-          <span className="font-semibold capitalize text-[#ff4d2d]">
-            {status}
-          </span>
-        </span>
-
-        <select
-          className="rounded-md border px-3 py-1 text-sm focus:outline-none focus:ring-2 border-[#ff4d2d] text-[#ff4d2d]"
-          onChange={(e) =>
-            handleUpdateStatus(data._id, shopOrder?.shop?._id, e.target.value)
-          }
-        >
-          <option value="">Change</option>
-          <option value="pending">Pending</option>
-          <option value="preparing">Preparing</option>
-          <option value="out of delivery">Out of Delivery</option>
-          <option value="delivered">Delivered</option>
-        </select>
-      </div>
-
-      {/* AVAILABLE BOYS */}
-      {status === "out of delivery" && (
-        <div className="mt-3 p-2 border rounded-lg text-sm bg-orange-50">
-          {data.shopOrders.assignedDeliveryBoy?<p>Assigned Delivery Boys:</p>:<p>Available Delivery Boys:</p>}
-          {availableBoys.length > 0 ? (
-            availableBoys.map((b, index) => (
-              <div className="text-gray-500" key={index}>
-                {b.fullName} - {b.mobile}
-              </div>
-            ))
-          ) : (
-            data.shopOrders.assignedDeliveryBoy?<div>{data.shopOrders.assignedDeliveryBoy.fullName}-{data.shopOrders.assignedDeliveryBoy.mobile}
+    <div className="bg-white/95 rounded-3xl shadow-2xl overflow-hidden border-2" style={{ borderColor: '#be920210' }}>
+      {/* Header Banner */}
+      <div className="p-6 pb-4" style={{ background: 'linear-gradient(135deg, #be9202ff 0%, #C1121F 100%)' }}>
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg" style={{ backgroundColor: '#3E2723' }}>
+              {data?.user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
             </div>
-            :<div>Waiting for delivery boys to accept</div>
-          )}
+            <div className="text-white">
+              <h2 className="text-2xl font-bold drop-shadow-lg">
+                {data?.user?.fullName}
+              </h2>
+              <p className="text-sm opacity-90">{data?.user?.email}</p>
+              <p className="flex items-center gap-2 text-sm mt-1 opacity-90">
+                <MdPhone size={16} />
+                <span>{data?.user?.mobile}</span>
+              </p>
+            </div>
+          </div>
+          <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
+            <p className="text-xs text-white font-semibold uppercase tracking-wide">Order #{data?._id?.slice(-6)}</p>
+          </div>
         </div>
-      )}
+      </div>
 
-      {/* TOTAL */}
-      <div className="text-right font-bold text-gray-800 text-sm">
-        Total: ₹{shopOrder?.subtotal}
+      {/* Main Content */}
+      <div className="p-6 space-y-6">
+
+        {/* ADDRESS INFO */}
+        <div className="bg-orange-50 rounded-2xl p-4 border-l-4" style={{ borderColor: '#C1121F' }}>
+          <h3 className="text-sm font-bold mb-2 flex items-center gap-2" style={{ color: '#3E2723' }}>
+            <span className="text-lg">📍</span> Delivery Address
+          </h3>
+          <p className="font-medium" style={{ color: '#2C1810' }}>{data?.deliveryAddress?.text}</p>
+          <p className="text-xs mt-2" style={{ color: '#2C1810', opacity: 0.6 }}>
+            Coordinates: {data?.deliveryAddress?.latitude}, {data?.deliveryAddress?.longitude}
+          </p>
+        </div>
+
+        {/* ITEMS */}
+        <div>
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: '#3E2723' }}>
+            <span className="text-xl">🍽️</span> Order Items
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {shopOrder?.shopOrderItems?.map((item, idx) => (
+              <div
+                key={idx}
+                className="bg-gradient-to-br from-white to-orange-50 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all border-2" style={{ borderColor: '#be920220' }}
+              >
+                <div className="relative">
+                  <img
+                    src={item?.item?.image}
+                    alt={item?.item?.name || ""}
+                    className="w-full h-32 object-cover"
+                  />
+                  <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full">
+                    <p className="text-xs font-bold" style={{ color: '#C1121F' }}>×{item?.quantity}</p>
+                  </div>
+                </div>
+                <div className="p-3">
+                  <p className="text-sm font-bold truncate" style={{ color: '#3E2723' }}>
+                    {item?.item?.name || "Product"}
+                  </p>
+                  <p className="text-xs font-semibold" style={{ color: '#2C1810', opacity: 0.7 }}>
+                    Rs. {item?.item?.price} each
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* STATUS + TOTAL */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pt-6 border-t-2" style={{ borderColor: '#be920220' }}>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold" style={{ color: '#2C1810', opacity: 0.7 }}>Status:</span>
+            <span className="px-4 py-2 rounded-full text-sm font-bold capitalize text-white shadow-lg" style={{ 
+              backgroundColor: status === 'delivered' ? '#10b981' : status === 'out of delivery' ? '#f59e0b' : status === 'preparing' ? '#3b82f6' : '#6b7280'
+            }}>
+              {status}
+            </span>
+          </div>
+
+          <select
+            className="px-6 py-3 rounded-xl font-bold text-sm focus:outline-none focus:ring-4 shadow-lg transition-all text-white cursor-pointer"
+            style={{ backgroundColor: '#C1121F', borderColor: '#C1121F' }}
+            onChange={(e) =>
+              handleUpdateStatus(data._id, shopOrder?.shop?._id, e.target.value)
+            }
+          >
+            <option value="">Update Status</option>
+            <option value="pending">Pending</option>
+            <option value="preparing">Preparing</option>
+            <option value="out of delivery">Out of Delivery</option>
+            <option value="delivered">Delivered</option>
+          </select>
+        </div>
+
+        {/* AVAILABLE BOYS */}
+        {status === "out of delivery" && (
+          <div className="rounded-2xl p-5 border-l-4" style={{ backgroundColor: '#fef3c7', borderColor: '#be9202ff' }}>
+            <h3 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: '#3E2723' }}>
+              <span className="text-lg">🚴</span> 
+              {data.shopOrders.assignedDeliveryBoy ? 'Assigned Delivery Boy' : 'Available Delivery Boys'}
+            </h3>
+            {availableBoys.length > 0 ? (
+              <div className="space-y-2">
+                {availableBoys.map((b, index) => (
+                  <div className="flex items-center justify-between bg-white rounded-xl p-3 shadow-sm" key={index}>
+                    <span className="font-semibold" style={{ color: '#2C1810' }}>{b.fullName}</span>
+                    <span className="text-sm" style={{ color: '#2C1810', opacity: 0.7 }}>{b.mobile}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              data.shopOrders.assignedDeliveryBoy ? (
+                <div className="flex items-center justify-between bg-white rounded-xl p-3 shadow-sm">
+                  <span className="font-semibold" style={{ color: '#2C1810' }}>{data.shopOrders.assignedDeliveryBoy.fullName}</span>
+                  <span className="text-sm" style={{ color: '#2C1810', opacity: 0.7 }}>{data.shopOrders.assignedDeliveryBoy.mobile}</span>
+                </div>
+              ) : (
+                <div className="text-center py-2" style={{ color: '#2C1810', opacity: 0.7 }}>
+                  ⏳ Waiting for delivery boys to accept...
+                </div>
+              )
+            )}
+          </div>
+        )}
+
+        {/* TOTAL */}
+        <div className="flex justify-between items-center p-5 rounded-2xl" style={{ backgroundColor: '#be9202ff' }}>
+          <span className="text-lg font-bold text-white">Order Total:</span>
+          <span className="text-3xl font-black text-white">Rs. {shopOrder?.subtotal}</span>
+        </div>
       </div>
     </div>
   );
