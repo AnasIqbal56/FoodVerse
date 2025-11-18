@@ -11,6 +11,7 @@ function OwnerOrderCard({ data }) {
 
   const shopOrder = data?.shopOrders;
   const [status, setStatus] = useState(shopOrder?.status || "");
+  const statusNormalized = (status || "").toLowerCase().trim();
 
   // Handle status change
   const handleUpdateStatus = async (orderId, shopId, newStatus) => {
@@ -113,7 +114,7 @@ function OwnerOrderCard({ data }) {
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold" style={{ color: '#2C1810', opacity: 0.7 }}>Status:</span>
             <span className="px-4 py-2 rounded-full text-sm font-bold capitalize text-white shadow-lg" style={{ 
-              backgroundColor: status === 'delivered' ? '#10b981' : status === 'out of delivery' ? '#f59e0b' : status === 'preparing' ? '#3b82f6' : '#6b7280'
+              backgroundColor: statusNormalized === 'delivered' ? '#10b981' : statusNormalized === 'out of delivery' ? '#f59e0b' : statusNormalized === 'preparing' ? '#3b82f6' : '#6b7280'
             }}>
               {status}
             </span>
@@ -135,11 +136,11 @@ function OwnerOrderCard({ data }) {
         </div>
 
         {/* AVAILABLE BOYS */}
-        {status === "out of delivery" && (
+        {statusNormalized === "out of delivery" && (
           <div className="rounded-2xl p-5 border-l-4" style={{ backgroundColor: '#fef3c7', borderColor: '#be9202ff' }}>
             <h3 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: '#3E2723' }}>
               <span className="text-lg">🚴</span> 
-              {data.shopOrders.assignedDeliveryBoy ? 'Assigned Delivery Boy' : 'Available Delivery Boys'}
+              {data.shopOrders?.assignedDeliveryBoy ? 'Assigned Delivery Boy' : 'Available Delivery Boys'}
             </h3>
             {availableBoys.length > 0 ? (
               <div className="space-y-2">

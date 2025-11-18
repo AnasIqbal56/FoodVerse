@@ -37,42 +37,37 @@ function MyOrders() {
   }, [socket, myOrders, userData, dispatch]);
 
   // Filter orders based on status and search
+  const normalizedFilter = filterStatus?.toLowerCase()?.trim();
   const filteredOrders = (myOrders || []).filter((order) => {
-    const matchesStatus = filterStatus === "all" || 
-      (userData?.role === "owner" 
-        ? order?.shopOrders?.status === filterStatus
-        : order?.shopOrders?.some(so => so.status === filterStatus));
-    
-    // Search by order ID only
-    const matchesSearch = !searchQuery || 
-      order?._id?.toLowerCase().includes(searchQuery.toLowerCase());
-    
+    const shopOrdersArray = Array.isArray(order?.shopOrders) ? order.shopOrders : [order?.shopOrders].filter(Boolean);
+
+    const matchesStatus = !normalizedFilter || normalizedFilter === "all" || shopOrdersArray.some(so => (so?.status || "").toLowerCase().trim() === normalizedFilter);
+
+    // Search by order ID only (remove search input for users handled elsewhere)
+    const matchesSearch = !searchQuery || order?._id?.toLowerCase().includes(searchQuery.toLowerCase());
+
     return matchesStatus && matchesSearch;
   });
 
   // Calculate order stats
   const orderStats = {
     total: (myOrders || []).length,
-    pending: (myOrders || []).filter(o => 
-      userData?.role === "owner" 
-        ? o?.shopOrders?.status === "pending"
-        : o?.shopOrders?.some(so => so.status === "pending")
-    ).length,
-    preparing: (myOrders || []).filter(o => 
-      userData?.role === "owner"
-        ? o?.shopOrders?.status === "preparing"
-        : o?.shopOrders?.some(so => so.status === "preparing")
-    ).length,
-    outForDelivery: (myOrders || []).filter(o => 
-      userData?.role === "owner"
-        ? o?.shopOrders?.status === "out of delivery"
-        : o?.shopOrders?.some(so => so.status === "out of delivery")
-    ).length,
-    delivered: (myOrders || []).filter(o => 
-      userData?.role === "owner"
-        ? o?.shopOrders?.status === "delivered"
-        : o?.shopOrders?.some(so => so.status === "delivered")
-    ).length,
+    pending: (myOrders || []).filter(o => {
+      const arr = Array.isArray(o?.shopOrders) ? o.shopOrders : [o?.shopOrders].filter(Boolean);
+      return arr.some(so => (so?.status || "").toLowerCase().trim() === "pending");
+    }).length,
+    preparing: (myOrders || []).filter(o => {
+      const arr = Array.isArray(o?.shopOrders) ? o.shopOrders : [o?.shopOrders].filter(Boolean);
+      return arr.some(so => (so?.status || "").toLowerCase().trim() === "preparing");
+    }).length,
+    outForDelivery: (myOrders || []).filter(o => {
+      const arr = Array.isArray(o?.shopOrders) ? o.shopOrders : [o?.shopOrders].filter(Boolean);
+      return arr.some(so => (so?.status || "").toLowerCase().trim() === "out of delivery");
+    }).length,
+    delivered: (myOrders || []).filter(o => {
+      const arr = Array.isArray(o?.shopOrders) ? o.shopOrders : [o?.shopOrders].filter(Boolean);
+      return arr.some(so => (so?.status || "").toLowerCase().trim() === "delivered");
+    }).length,
   };
 
   return (
@@ -164,7 +159,16 @@ function MyOrders() {
                   whileHover={{ y: -5, boxShadow: "0 20px 40px rgba(0,0,0,0.1)" }}
                   className="bg-white/95 backdrop-blur-lg rounded-2xl p-4 md:p-6 shadow-lg border-2 cursor-pointer"
                   style={{ borderColor: `${stat.color}20` }}
-                  onClick={() => setFilterStatus(stat.label === "Total Orders" ? "all" : stat.label.toLowerCase().replace(" ", "_"))}
+                  onClick={() => {
+                    const map = {
+                      "Total Orders": "all",
+                      "Pending": "pending",
+                      "Preparing": "preparing",
+                      "Out for Delivery": "out of delivery",
+                      "Delivered": "delivered",
+                    };
+                    setFilterStatus(map[stat.label] || "all");
+                  }}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <stat.icon size={24} style={{ color: stat.color }} />
@@ -186,18 +190,7 @@ function MyOrders() {
               transition={{ delay: 0.4 }}
               className="bg-white/95 backdrop-blur-lg rounded-2xl p-4 shadow-lg flex flex-col md:flex-row gap-4 mb-6"
             >
-              {/* Search Input - Only for users */}
-              {userData?.role === "user" && (
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    placeholder="Search by order ID..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:bg-white outline-none transition-all"
-                  />
-                </div>
-              )}
+              {/* Search input removed for users per requirements */}
 
               {/* Filter Buttons */}
               <div className="flex gap-2 overflow-x-auto">

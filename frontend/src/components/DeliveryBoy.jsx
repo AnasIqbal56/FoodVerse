@@ -3,7 +3,8 @@ import Nav from "./Nav";
 import { useSelector } from "react-redux";
 import DeliveryBoyTracking from "./DeliveryBoyTracking";
 import axios from "axios";
-
+import { motion } from "framer-motion";
+import { FaTruck, FaMapMarkerAlt, FaBox, FaClock } from "react-icons/fa";
 
 function DeliveryBoy() {
   const { userData, socket } = useSelector((state) => state.user);
@@ -98,107 +99,224 @@ function DeliveryBoy() {
   }, [userData]);
 
   return (
-    <div className="w-screen min-h-screen flex flex-col gap-5 items-center bg-[#fff9f6] overflow-y-auto">
+    <div className="min-h-screen w-full flex flex-col" style={{ backgroundColor: '#f7d26eff' }}>
       <Nav />
-      <div className="w-full max-w-[800px] flex flex-col gap-5 items-center">
-        {/* User Info */}
-        <div className="w-full bg-white shadow-md rounded-2xl p-5 flex flex-col justify-start items-center border border-orange-100 text-center gap-2">
-          <h1 className="text-xl font-bold text-[#ff4d2d]">
-            Welcome, {userData.fullName}
-          </h1>
-
-          {/* sir said dont show location of delivery boy */}
-          
-          {/* <p className="text-[#ff4d2d]">
-            <span className="font-bold">Latitude: </span>
-            {userData.location.coordinates[1]},{" "}
-            <span className="font-bold">Longitude: </span>
-            {userData.location.coordinates[0]}
-          </p> */}
+      <div className="flex-1 w-full flex flex-col items-center px-4 sm:px-6 py-8">
+        
+        {/* Header with Welcome Message */}
+        <div className="w-full max-w-6xl mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-lg p-8 border-2" 
+            style={{ borderColor: '#C1121F20' }}
+          >
+            <div className="flex items-center gap-4 mb-2">
+              <FaTruck className="text-[#C1121F] text-3xl" />
+              <h1 className="text-4xl font-bold" style={{ color: '#3E2723' }}>
+                Welcome, {userData?.fullName || "Delivery Partner"}
+              </h1>
+            </div>
+            <p className="text-base" style={{ color: '#2C1810', opacity: 0.85 }}>
+              Your status: <span className="font-semibold">Active & Ready for Deliveries</span>
+            </p>
+          </motion.div>
         </div>
 
-        {/* Available Orders */}
+        {/* Available Orders Section */}
         {!currentOrder && (
-          <div className="bg-white rounded-2xl p-5 shadow-md w-[90%] border border-orange-100">
-            <h1 className="text-lg font-bold flex items-center mb-4">
+          <div className="w-full max-w-6xl mb-8">
+            <motion.h2
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-3xl font-bold mb-6 flex items-center gap-3" 
+              style={{ color: '#3E2723' }}
+            >
+              <FaBox className="text-[#C1121F]" />
               Available Orders
-            </h1>
+            </motion.h2>
+            
             <div className="space-y-4">
               {availableAssignments && availableAssignments.length > 0 ? (
                 availableAssignments.map((a, index) => (
-                  <div
-                    className="border rounded-lg p-4 flex justify-between items-center"
+                  <motion.div
                     key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ y: -4, scale: 1.01 }}
+                    className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden border-l-4 cursor-pointer"
+                    style={{ borderLeftColor: '#C1121F' }}
                   >
-                    <div>
-                      <p className="text-sm font-semibold">{a?.shopName}</p>
-                      <p className="text-sm text-gray-500">
-                        <span className="font-bold">Delivery Address:</span>{" "}
-                        {a?.deliveryAddress?.text}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        {a?.items.length} items | {a.subtotal}
-                      </p>
+                    <div className="p-6 flex justify-between items-start gap-4">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold" style={{ color: '#3E2723' }}>
+                          {a?.shopName}
+                        </h3>
+                        
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-start gap-2">
+                            <FaMapMarkerAlt className="text-[#C1121F] mt-1 flex-shrink-0" size={14} />
+                            <p className="text-sm" style={{ color: '#2C1810', opacity: 0.85 }}>
+                              <span className="font-semibold">Delivery to:</span> {a?.deliveryAddress?.text}
+                            </p>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <FaBox className="text-[#be9202ff]" size={14} />
+                            <p className="text-sm font-medium" style={{ color: '#2C1810' }}>
+                              {a?.items?.length || 0} items • ₹{a?.subtotal || 0}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="px-6 py-3 rounded-full font-semibold text-white shadow-md transition-all text-sm flex-shrink-0"
+                        style={{ backgroundColor: '#C1121F' }}
+                        onClick={() => acceptOrder(a.assignmentId)}
+                      >
+                        Accept Order
+                      </motion.button>
                     </div>
-                    <button
-                      className="bg-orange-500 text-white px-4 py-1 rounded-lg text-sm hover:bg-orange-600"
-                      onClick={() => acceptOrder(a.assignmentId)}
-                    >
-                      Accept
-                    </button>
-                  </div>
+                  </motion.div>
                 ))
               ) : (
-                <p className="text-gray-400 text-sm">No available orders</p>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="bg-white rounded-2xl shadow-md p-12 text-center border border-gray-200"
+                >
+                  <FaBox className="text-gray-300 text-5xl mx-auto mb-4" />
+                  <p className="text-gray-500 text-lg font-medium">No available orders at the moment</p>
+                  <p className="text-gray-400 text-sm mt-2">Stay tuned! Orders will appear here soon.</p>
+                </motion.div>
               )}
             </div>
           </div>
         )}
 
-        {/* Current Order */}
+        {/* Current Order Section */}
         {currentOrder && (
-          <div className="bg-white rounded-2xl p-5 shadow-md w-[90%] border border-orange-100">
-            <h2 className="text-lg font-bold mb-3">📦 Current Order</h2>
-            <div className="border rounded-lg p-4 mb-3">
-              <p className="font-semibold text-sm">
-                {currentOrder?.shopOrder?.shop?.name}
-              </p>
-              <p className="text-xs text-gray-500 ">
-                {currentOrder?.deliveryAddress?.text}
-              </p>
-              <p className="text-xs text-gray-400 ">
-                {currentOrder?.shopOrder?.shopOrderItems?.length} items |{" "}
-                {currentOrder?.shopOrder?.subtotal}
-              </p>
-            </div>
-
-            <DeliveryBoyTracking
-              deliveryBoyLocation={currentOrder.deliveryBoyLocation}
-              customerLocation={currentOrder.customerLocation}
-            />
-
-            {!showOTPBox ? (
-              <button
-                className="mt-4 w-full bg-green-500 text-white font-semibold py-2 px-4 rounded-xl shadow-md hover:bg-green-600 active:scale-95 transition-all duration-200"
-                onClick={sendOtp}
+          <div className="w-full max-w-6xl">
+            <motion.h2
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-3xl font-bold mb-6 flex items-center gap-3" 
+              style={{ color: '#3E2723' }}
+            >
+              <FaClock className="text-[#C1121F]" />
+              Active Delivery
+            </motion.h2>
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl shadow-xl overflow-hidden border-2"
+              style={{ borderColor: '#C1121F30' }}
+            >
+              {/* Card Header with gradient */}
+              <div 
+                className="p-6 text-white"
+                style={{ background: 'linear-gradient(135deg, #C1121F 0%, #be9202ff 100%)' }}
               >
-                Mark as Delivered
-              </button>
-            ) : (
-              <div className="mt-4 p-4 border rounded-xl bg-gray-50">
-                <p className="text-sm font-semibold mb-2">Enter OTP sent to 
-                  <span className="text-orange-500 font-bold"> {currentOrder.user.fullName}</span>
-                </p>
-                <input
-                  type="text"
-                  className="border rounded-lg px-3 py-2 w-full mb-3 focus:outline-none focus:ring-2 focus:ring-orange-400"
-                  placeholder="Enter OTP" onChange={(e)=> setOtp(e.target.value)} value={otp}
-                />
-                <button className="w-full bg-orange-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-orange-600 transition-all" onClick={verifyOtp}>
-                  Submit OTP
-                </button>
+                <h3 className="text-2xl font-bold mb-2">
+                  {currentOrder?.shopOrder?.shop?.name}
+                </h3>
+                <div className="flex items-center gap-2 text-white/90">
+                  <FaMapMarkerAlt size={16} />
+                  <p className="text-sm">{currentOrder?.deliveryAddress?.text}</p>
+                </div>
               </div>
-            )}
+
+              {/* Order Details Card */}
+              <div className="p-6">
+                <div className="mb-6 pb-6 border-b border-gray-200">
+                  <h4 className="font-bold text-gray-800 mb-3">Order Details</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Customer</p>
+                      <p className="font-semibold" style={{ color: '#3E2723' }}>
+                        {currentOrder?.user?.fullName || "Customer"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Items</p>
+                      <p className="font-semibold" style={{ color: '#3E2723' }}>
+                        {currentOrder?.shopOrder?.shopOrderItems?.length || 0} items
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Subtotal</p>
+                      <p className="font-semibold" style={{ color: '#3E2723' }}>
+                        ₹{currentOrder?.shopOrder?.subtotal || 0}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Status</p>
+                      <p className="font-semibold text-orange-600">Out for Delivery</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tracking Section */}
+                <div className="mb-6">
+                  <h4 className="font-bold text-gray-800 mb-3">Live Tracking</h4>
+                  <div className="rounded-xl overflow-hidden border border-gray-200">
+                    <DeliveryBoyTracking
+                      deliveryBoyLocation={currentOrder.deliveryBoyLocation}
+                      customerLocation={currentOrder.customerLocation}
+                    />
+                  </div>
+                </div>
+
+                {/* OTP Section */}
+                {!showOTPBox ? (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full py-3 px-4 rounded-xl font-semibold text-white shadow-md transition-all text-base"
+                    style={{ backgroundColor: '#10b981' }}
+                    onClick={sendOtp}
+                  >
+                    Mark as Delivered
+                  </motion.button>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 rounded-xl bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200"
+                  >
+                    <p className="text-sm font-semibold mb-3" style={{ color: '#3E2723' }}>
+                      Enter OTP sent to{" "}
+                      <span className="font-bold" style={{ color: '#C1121F' }}>
+                        {currentOrder?.user?.fullName || "Customer"}
+                      </span>
+                    </p>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      className="w-full border-2 rounded-lg px-4 py-3 mb-3 focus:outline-none font-semibold text-center text-lg tracking-widest"
+                      style={{ borderColor: '#C1121F40', color: '#3E2723' }}
+                      placeholder="000000"
+                      onChange={(e) => setOtp(e.target.value)}
+                      value={otp}
+                    />
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="w-full py-3 px-4 rounded-lg font-semibold text-white transition-all"
+                      style={{ backgroundColor: '#C1121F' }}
+                      onClick={verifyOtp}
+                    >
+                      Verify OTP
+                    </motion.button>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
           </div>
         )}
       </div>
