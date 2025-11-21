@@ -458,7 +458,13 @@ export const verifyDeliveryOtp = async (req, res) => {
       return res.status(400).json({ message: "enter valid order/shopOrderId" })
     }
 
-    if (shopOrder.deliveryOtp !== otp || !shopOrder.otpExpires || shopOrder.otpExpires < Date.now()) {
+    // Trim whitespace from both OTP values for comparison
+    const trimmedOtp = String(otp || '').trim();
+    const storedOtp = String(shopOrder.deliveryOtp || '').trim();
+    
+    console.log(`[OTP Verification] Comparing OTPs:`, { stored: storedOtp, received: trimmedOtp, expires: shopOrder.otpExpires, now: Date.now() });
+
+    if (storedOtp !== trimmedOtp || !shopOrder.otpExpires || shopOrder.otpExpires < Date.now()) {
       return res.status(400).json({ message: "Invalid/Expired Otp" })
     }
 

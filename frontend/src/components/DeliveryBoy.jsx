@@ -66,14 +66,27 @@ function DeliveryBoy() {
 
   const verifyOtp = async () => {
     try {
+      const trimmedOtp = (otp || '').trim();
+      if (!trimmedOtp || trimmedOtp.length < 4) {
+        alert('Please enter a valid 4-digit OTP');
+        return;
+      }
+      
+      console.log('[Frontend OTP Verification]', { orderId: currentOrder._id, shopOrderId: currentOrder.shopOrder._id, otp: trimmedOtp });
+      
       const result = await axios.post(
         `${serverUrl}/api/order/verify-delivery-otp`,
-        { orderId: currentOrder._id, shopOrderId: currentOrder.shopOrder._id ,otp },
+        { orderId: currentOrder._id, shopOrderId: currentOrder.shopOrder._id, otp: trimmedOtp },
         { withCredentials: true }
       );
-      console.log(result.data);
+      console.log('[OTP Verification Success]', result.data);
+      alert('Delivery verified! Order marked as delivered.');
+      setOtp('');
+      setShowOTPBox(false);
+      await getCurrentOrder();
     } catch (error) {
-      console.log(error);
+      console.error('[OTP Verification Error]', error.response?.data || error.message);
+      alert(`OTP Verification failed: ${error.response?.data?.message || error.message}`);
     }
   }; 
 
