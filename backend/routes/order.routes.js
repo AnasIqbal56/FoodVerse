@@ -9,9 +9,9 @@ import {
   getDeliveryBoyAssignment,
   sendDeliveryOtp,
   verifyDeliveryOtp,
-  initiateSafepayPayment,
-  handleSafepayWebhook,
-  verifyPaymentStatus,
+  initiatePayFastPayment,
+  verifyPayFastPayment,
+  handlePayFastWebhook,
 } from "../controllers/order.controllers.js";
 import isAuth from "../middlewares/isAuth.js";
 
@@ -27,9 +27,11 @@ orderRouter.post("/verify-delivery-otp", isAuth, verifyDeliveryOtp);
 orderRouter.get("/accept-order/:assignmentId", isAuth, acceptOrder);
 orderRouter.get("/get-order-by-id/:orderId", isAuth, getOrderById);
 
-// Safepay payment routes
-orderRouter.post("/initiate-payment", isAuth, initiateSafepayPayment);
-orderRouter.post("/safepay-webhook", handleSafepayWebhook); // No auth - webhook from Safepay
-orderRouter.get("/verify-payment/:orderId", isAuth, verifyPaymentStatus);
+// PayFast payment routes
+orderRouter.post("/initiate-payfast-payment", isAuth, initiatePayFastPayment);
+orderRouter.post("/verify-payfast-payment/:orderId", isAuth, verifyPayFastPayment);
+
+// PayFast webhook (ITN) - No auth required, PayFast will post here
+orderRouter.post("/payfast-webhook", handlePayFastWebhook);
 
 export default orderRouter;

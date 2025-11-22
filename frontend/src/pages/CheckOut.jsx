@@ -109,8 +109,8 @@ function CheckOut() {
         dispatch(addMyOrder(result.data));
         navigate("/order-placed");
       } else if (paymentMethod === 'online') {
-        // Initiate Safepay payment
-        const result = await axios.post(`${serverUrl}/api/order/initiate-payment`, {
+        // Initiate PayFast payment
+        const result = await axios.post(`${serverUrl}/api/order/initiate-payfast-payment`, {
           deliveryAddress: {
             text: addressInput,
             latitude: location.lat,
@@ -119,17 +119,31 @@ function CheckOut() {
           totalAmount: AmountWithDeliveryFee,
           cartItems
         }, { withCredentials: true });
-        
-        // Store order ID in localStorage to verify after payment
-        localStorage.setItem('pendingOrderId', result.data.orderId);
-        
-        // Log checkout URL for debugging
-        console.log('Redirecting to SafePay checkout:', result.data.checkoutUrl);
-        console.log('Order ID:', result.data.orderId);
-        
-        // Redirect to Safepay checkout page (SafePay's hosted checkout)
-        // Try window.location.href first - some browsers handle this better
-        window.location.href = result.data.checkoutUrl;
+
+        if (result.data.success) {
+          // Store order ID for verification after return
+          localStorage.setItem('pendingOrderId', result.data.orderId);
+          
+          // Create form and submit to PayFast
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = result.data.paymentUrl;
+          
+          // Add all form fields
+          Object.keys(result.data.formData).forEach(key => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = result.data.formData[key];
+            form.appendChild(input);
+          });
+          
+          document.body.appendChild(form);
+          console.log('Redirecting to PayFast:', result.data.paymentUrl);
+          form.submit();
+        } else {
+          alert('Failed to initiate payment. Please try again.');
+        }
       }
     } catch (error) {
       console.error('Place order error:', error);

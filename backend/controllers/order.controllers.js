@@ -3,8 +3,14 @@ import Shop from '../models/shop.model.js';
 import User from '../models/user.model.js';
 import DeliveryAssignment from '../models/deliveryAssignment.model.js';
 import mongoose from 'mongoose';
-import { sendDeliveryOtpMail } from '../utils/mail.js';
-import { createSafepayPayment, verifyWebhookSignature } from '../utils/safepay.js';
+import { sendDeliveryOtpMail, sendPaymentConfirmationMail } from '../utils/mail.js';
+import { 
+  createPayFastPayment, 
+  verifyPayFastSignature,
+  validatePayFastIP,
+  validatePaymentAmount,
+  validatePayFastPayment
+} from '../utils/payfast.js';
 
 export const placeOrder = async (req, res) => {
   try {
@@ -483,20 +489,25 @@ export const verifyDeliveryOtp = async (req, res) => {
 
   } catch (error) {
     return res.status(500).json({ message: `verify delivery otp error ${error}` });
-
   }
 }
 
-// Initialize Safepay payment
-export const initiateSafepayPayment = async (req, res) => {
+// PayFast Payment Integration - Initiate Payment
+export const initiatePayFastPayment = async (req, res) => {
   try {
     const { cartItems, deliveryAddress, totalAmount } = req.body;
 
+    console.log('Initiating PayFast payment:', { totalAmount, cartItemsCount: cartItems?.length });
+
+    // Validation
     if (!cartItems || cartItems.length === 0) {
       return res.status(400).json({ message: "Cart is empty" });
     }
     if (!deliveryAddress?.text || !deliveryAddress?.latitude || !deliveryAddress?.longitude) {
       return res.status(400).json({ message: "Send Complete Delivery Address" });
+    }
+    if (!totalAmount || totalAmount < 5) {
+      return res.status(400).json({ message: "Minimum payment amount is R5.00" });
     }
 
     // Get user info
@@ -505,7 +516,7 @@ export const initiateSafepayPayment = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Group items by shop (same as placeOrder)
+    // Group items by shop
     const groupItemsByShop = {};
     cartItems.forEach(item => {
       const shopId = item.shopId || (item.shop && (item.shop._id || item.shop));
@@ -518,6 +529,7 @@ export const initiateSafepayPayment = async (req, res) => {
       groupItemsByShop[shopIdStr].push(item);
     });
 
+    // Build shop orders
     const shopOrders = await Promise.all(
       Object.keys(groupItemsByShop).map(async (shopId) => {
         const shop = await Shop.findById(shopId).populate('owner');
@@ -540,7 +552,7 @@ export const initiateSafepayPayment = async (req, res) => {
       })
     );
 
-    // Create order with pending payment status
+    // Create order with pending payment
     const newOrder = await Order.create({
       user: req.userId,
       paymentMethod: 'online',
@@ -552,262 +564,322 @@ export const initiateSafepayPayment = async (req, res) => {
       }
     });
 
-    // Create Safepay payment session
-    const paymentResult = await createSafepayPayment({
+    console.log('Order created:', newOrder._id);
+
+    // Create PayFast payment
+    const paymentResult = await createPayFastPayment({
       orderId: newOrder._id.toString(),
       amount: totalAmount,
       customerEmail: user.email,
+      customerName: user.name || 'Customer',
       customerPhone: user.mobile || ''
     });
 
     if (!paymentResult.success) {
-      // Delete the order if payment session creation fails
+      // Delete order if payment creation fails
       await Order.findByIdAndDelete(newOrder._id);
-      console.error('Payment session creation failed:', {
-        error: paymentResult.error,
-        details: paymentResult.details
-      });
+      console.error('PayFast payment creation failed:', paymentResult.error);
       return res.status(400).json({ 
-        message: "Failed to create payment session", 
-        error: paymentResult.error,
-        details: paymentResult.details || null
+        message: "Failed to create payment", 
+        error: paymentResult.error
       });
     }
 
-    // Update order with Safepay token
-    newOrder.payment.safepayToken = paymentResult.token;
-    newOrder.payment.safepayTracker = paymentResult.token;
+    // Update order with PayFast reference
+    newOrder.payment.payFastOrderId = newOrder._id.toString();
     await newOrder.save();
 
-    return res.status(201).json({
+    console.log('PayFast payment initiated successfully:', {
       orderId: newOrder._id,
-      checkoutUrl: paymentResult.checkoutUrl,
-      token: paymentResult.token
+      amount: totalAmount
+    });
+
+    return res.status(201).json({
+      success: true,
+      orderId: newOrder._id,
+      paymentUrl: paymentResult.paymentUrl,
+      formData: paymentResult.formData
     });
 
   } catch (error) {
-    console.error('Initiate Safepay payment error:', error);
+    console.error('Initiate PayFast payment error:', error);
     return res.status(500).json({ 
       message: `Payment initiation error: ${error.message}` 
     });
   }
 };
 
-// Safepay webhook handler
-export const handleSafepayWebhook = async (req, res) => {
+// Verify PayFast Payment Status (called from frontend after return)
+export const verifyPayFastPayment = async (req, res) => {
   try {
-    const webhookData = req.body;
-    const signature = req.headers['x-sfpy-signature'] || req.headers['x-safepay-signature'];
-    
-    console.log('Safepay webhook received:', {
-      headers: {
-        'content-type': req.headers['content-type'],
-        'x-sfpy-signature': signature ? 'present' : 'missing',
-      },
-      body: webhookData
-    });
+    const { orderId } = req.params;
 
-    // Verify webhook signature for security
-    if (signature) {
-      const isValid = verifyWebhookSignature(webhookData, signature);
-      if (!isValid) {
-        console.warn('Webhook signature verification failed');
-        // Still process in sandbox, but log the warning
-        if (!process.env.SAFEPAY_BASE_URL?.includes('sandbox')) {
-          return res.status(401).json({ message: "Invalid webhook signature" });
-        }
-      }
-    }
+    console.log('Verifying payment for order:', orderId);
 
-    // Extract order ID from the webhook (handle different payload structures)
-    // SafePay sends order_id in payment_metadata array where meta_key === "order_id"
-    let orderId = null;
-    
-    // Method 1: Check payment_metadata array (most common in SafePay webhooks)
-    if (webhookData.payment_metadata && Array.isArray(webhookData.payment_metadata)) {
-      const orderIdMeta = webhookData.payment_metadata.find(
-        meta => meta.meta_key === 'order_id'
-      );
-      if (orderIdMeta && orderIdMeta.meta_value) {
-        orderId = orderIdMeta.meta_value;
-      }
-    }
-    
-    // Method 2: Check root level fields
     if (!orderId) {
-      orderId = webhookData.tracker?.order_id || 
-                webhookData.order_id || 
-                webhookData.data?.order_id ||
-                webhookData.order?.id ||
-                webhookData.metadata?.order_id ||
-                webhookData.root?.order_id;
-    }
-    
-    if (!orderId) {
-      console.error('No order ID in webhook. Full payload:', JSON.stringify(webhookData, null, 2));
-      return res.status(400).json({ message: "Order ID not found in webhook" });
+      return res.status(400).json({ message: "Order ID is required" });
     }
 
-    // Find order by ID or by safepay token/tracker
-    let order = await Order.findById(orderId)
+    // Find order
+    const order = await Order.findById(orderId)
       .populate("shopOrders.shop", "name")
       .populate("shopOrders.owner", "name email mobile socketId")
       .populate("shopOrders.shopOrderItems.item", "name image price")
       .populate("user", "name email mobile socketId");
 
-    // If order not found by ID, try finding by safepay token/tracker
     if (!order) {
-      const tracker = webhookData.tracker?.token || 
-                     webhookData.tracker || 
-                     webhookData.token ||
-                     webhookData.data?.token;
-      
-      if (tracker) {
-        order = await Order.findOne({
-          $or: [
-            { 'payment.safepayToken': tracker },
-            { 'payment.safepayTracker': tracker }
-          ]
-        })
-        .populate("shopOrders.shop", "name")
-        .populate("shopOrders.owner", "name email mobile socketId")
-        .populate("shopOrders.shopOrderItems.item", "name image price")
-        .populate("user", "name email mobile socketId");
-      }
-    }
-
-    if (!order) {
-      console.error('Order not found for webhook. OrderId:', orderId, 'Payload:', JSON.stringify(webhookData, null, 2));
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // Extract payment status from webhook (handle different payload structures)
-    // SafePay uses "PAID", "PAYMENT_FAILED", etc. in the state field
-    const paymentState = webhookData.state || 
-                        webhookData.data?.state || 
-                        webhookData.root?.state ||
-                        webhookData.status ||
-                        webhookData.payment?.state ||
-                        webhookData.transaction?.state;
-    
-    // Extract transaction reference
-    const transactionId = webhookData.reference || 
-                        webhookData.token ||
-                        webhookData.data?.reference || 
-                        webhookData.data?.token ||
-                        webhookData.root?.reference ||
-                        webhookData.root?.token ||
-                        webhookData.transaction_id ||
-                        webhookData.transaction?.id ||
-                        webhookData.id;
-
-    console.log('Processing webhook for order:', orderId, 'State:', paymentState);
-
-    // Handle completed/successful payment
-    // SafePay uses "PAID" state for successful payments
-    if (paymentState === 'PAID' ||
-        paymentState === 'COMPLETED' || 
-        paymentState === 'completed' || 
-        paymentState === 'SUCCESS' || 
-        paymentState === 'success' ||
-        paymentState === 'succeeded' ||
-        webhookData.event === 'payment.succeeded') {
-      
-      // Only update if not already paid
-      if (order.payment.status !== 'paid') {
-        order.payment.status = 'paid';
-        order.payment.paidAt = new Date();
-        if (transactionId) {
-          order.payment.transactionId = transactionId;
-        }
-        await order.save();
-
-        console.log('Payment completed for order:', orderId, 'Transaction ID:', transactionId);
-
-        // Send real-time notification to shop owners
-        const io = req.app.get('io');
-        if (io) {
-          order.shopOrders.forEach(shopOrder => {
-            const ownerSocketId = shopOrder.owner?.socketId;
-            if (ownerSocketId) {
-              io.to(ownerSocketId).emit('newOrder', {
-                _id: order._id,
-                paymentMethod: order.paymentMethod,
-                user: order.user,
-                shopOrders: shopOrder,
-                createdAt: order.createdAt,
-                deliveryAddress: order.deliveryAddress,
-                payment: order.payment
-              });
-            }
-          });
-        }
-      }
-
-      return res.status(200).json({ message: "Payment processed successfully" });
-    } 
-    // Handle failed payment
-    else if (paymentState === 'FAILED' || 
-             paymentState === 'failed' || 
-             paymentState === 'DECLINED' ||
-             paymentState === 'declined' ||
-             webhookData.event === 'payment.failed') {
-      
-      if (order.payment.status !== 'failed') {
-        order.payment.status = 'failed';
-        if (transactionId) {
-          order.payment.transactionId = transactionId;
-        }
-        await order.save();
-        console.log('Payment failed for order:', orderId);
-      }
-
-      return res.status(200).json({ message: "Payment failed" });
+    // Check if user owns this order
+    if (order.user._id.toString() !== req.userId) {
+      return res.status(403).json({ message: "Unauthorized access to order" });
     }
 
-    // For other states or unknown events, just acknowledge
-    console.log('Webhook received for order:', orderId, 'with state:', paymentState);
-    return res.status(200).json({ message: "Webhook received" });
+    // Check if payment is already processed
+    if (order.payment.status === 'paid') {
+      console.log('Payment already verified for order:', orderId);
+      
+      // Send real-time notifications if not sent yet
+      const io = req.app.get('io');
+      if (io) {
+        order.shopOrders.forEach(shopOrder => {
+          const ownerSocketId = shopOrder.owner?.socketId;
+          if (ownerSocketId) {
+            io.to(ownerSocketId).emit('newOrder', {
+              _id: order._id,
+              paymentMethod: order.paymentMethod,
+              user: order.user,
+              shopOrders: shopOrder,
+              createdAt: order.createdAt,
+              deliveryAddress: order.deliveryAddress,
+              payment: order.payment
+            });
+          }
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Payment verified successfully",
+        order: order,
+        paymentStatus: 'paid'
+      });
+    }
+
+    // Update payment status to paid
+    order.payment.status = 'paid';
+    order.payment.paidAt = new Date();
+    await order.save();
+
+    console.log('Payment marked as paid for order:', orderId);
+
+    // Send real-time notifications to shop owners
+    const io = req.app.get('io');
+    if (io) {
+      order.shopOrders.forEach(shopOrder => {
+        const ownerSocketId = shopOrder.owner?.socketId;
+        if (ownerSocketId) {
+          io.to(ownerSocketId).emit('newOrder', {
+            _id: order._id,
+            paymentMethod: order.paymentMethod,
+            user: order.user,
+            shopOrders: shopOrder,
+            createdAt: order.createdAt,
+            deliveryAddress: order.deliveryAddress,
+            payment: order.payment
+          });
+        }
+      });
+    }
+
+    // Send email confirmation to customer
+    try {
+      const allItems = order.shopOrders.flatMap(shopOrder =>
+        shopOrder.shopOrderItems.map(item => ({
+          name: item.name || 'Item',
+          quantity: item.quantity,
+          price: (item.price * item.quantity).toFixed(2)
+        }))
+      );
+
+      await sendPaymentConfirmationMail({
+        to: order.user.email,
+        orderId: order._id.toString(),
+        amount: order.totalAmount.toFixed(2),
+        customerName: order.user.fullName || 'Customer',
+        items: allItems
+      });
+
+      console.log('Payment confirmation email sent to:', order.user.email);
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      // Don't fail the payment process if email fails
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment verified successfully",
+      order: order,
+      paymentStatus: 'paid'
+    });
 
   } catch (error) {
-    console.error('Safepay webhook error:', error);
+    console.error('Verify PayFast payment error:', error);
     return res.status(500).json({ 
-      message: `Webhook processing error: ${error.message}` 
+      message: `Payment verification error: ${error.message}` 
     });
   }
 };
 
-// Verify payment status (for frontend to check)
-export const verifyPaymentStatus = async (req, res) => {
+// PayFast Webhook Handler (ITN - Instant Transaction Notification)
+export const handlePayFastWebhook = async (req, res) => {
   try {
-    const { orderId } = req.params;
+    console.log('=== PayFast ITN Received ===');
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
+    
+    // Send 200 OK immediately to prevent retries
+    res.status(200).send('OK');
+    
+    const pfData = req.body;
+    
+    // Extract order ID from m_payment_id
+    const orderId = pfData.m_payment_id;
+    if (!orderId) {
+      console.error('No order ID in ITN');
+      return;
+    }
 
+    console.log('Processing ITN for order:', orderId);
+
+    // Security Check 1: Verify Signature
+    const signatureValid = verifyPayFastSignature(pfData);
+    if (!signatureValid) {
+      console.error('❌ Security Check 1 Failed: Invalid signature');
+      return;
+    }
+    console.log('✓ Security Check 1 Passed: Signature valid');
+
+    // Security Check 2: Verify PayFast IP (skip in development)
+    if (process.env.NODE_ENV === 'production') {
+      const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+      const ipValid = await validatePayFastIP(clientIp);
+      if (!ipValid) {
+        console.error('❌ Security Check 2 Failed: Invalid IP address');
+        return;
+      }
+      console.log('✓ Security Check 2 Passed: IP address valid');
+    } else {
+      console.log('⚠ Security Check 2 Skipped: Development mode');
+    }
+
+    // Find the order
     const order = await Order.findById(orderId)
       .populate("shopOrders.shop", "name")
+      .populate("shopOrders.owner", "fullName email mobile socketId")
       .populate("shopOrders.shopOrderItems.item", "name image price")
-      .populate("user", "name email");
+      .populate("user", "fullName email mobile socketId");
 
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      console.error('Order not found:', orderId);
+      return;
     }
 
-    // Check if user is authorized to view this order
-    if (order.user._id.toString() !== req.userId) {
-      return res.status(403).json({ message: "Unauthorized" });
+    // Security Check 3: Validate payment amount
+    const amountValid = validatePaymentAmount(order.totalAmount, pfData.amount_gross);
+    if (!amountValid) {
+      console.error('❌ Security Check 3 Failed: Amount mismatch');
+      console.error('Expected:', order.totalAmount, 'Received:', pfData.amount_gross);
+      return;
+    }
+    console.log('✓ Security Check 3 Passed: Amount matches');
+
+    // Security Check 4: Server-side validation with PayFast
+    const serverValid = await validatePayFastPayment(pfData);
+    if (!serverValid) {
+      console.error('❌ Security Check 4 Failed: Server validation failed');
+      return;
+    }
+    console.log('✓ Security Check 4 Passed: Server validation successful');
+
+    // All checks passed - Process the payment
+    console.log('✓ All security checks passed');
+    
+    // Check payment status
+    if (pfData.payment_status !== 'COMPLETE') {
+      console.log('Payment not complete, status:', pfData.payment_status);
+      
+      if (pfData.payment_status === 'CANCELLED') {
+        order.payment.status = 'cancelled';
+        await order.save();
+      }
+      return;
     }
 
-    return res.status(200).json({
-      orderId: order._id,
-      paymentStatus: order.payment.status,
-      paidAt: order.payment.paidAt,
-      totalAmount: order.totalAmount,
-      order: order
+    // Update order with payment details
+    order.payment.status = 'paid';
+    order.payment.pfPaymentId = pfData.pf_payment_id;
+    order.payment.payFastOrderId = orderId;
+    order.payment.paidAt = new Date();
+
+    // Update shop orders status
+    order.shopOrders.forEach(shopOrder => {
+      shopOrder.status = 'pending';
     });
+
+    await order.save();
+
+    console.log('✓ Order updated successfully:', orderId);
+
+    // Send real-time notifications to shop owners
+    const io = req.app.get('io');
+    if (io) {
+      order.shopOrders.forEach(shopOrder => {
+        const ownerSocketId = shopOrder.owner?.socketId;
+        if (ownerSocketId) {
+          console.log('Sending notification to shop owner:', shopOrder.shop.name);
+          io.to(ownerSocketId).emit('newOrder', {
+            _id: order._id,
+            paymentMethod: order.paymentMethod,
+            user: order.user,
+            shopOrders: shopOrder,
+            createdAt: order.createdAt,
+            deliveryAddress: order.deliveryAddress,
+            payment: order.payment
+          });
+        }
+      });
+    }
+
+    // Send email confirmation to customer
+    try {
+      const allItems = order.shopOrders.flatMap(shopOrder =>
+        shopOrder.shopOrderItems.map(item => ({
+          name: item.name || 'Item',
+          quantity: item.quantity,
+          price: (item.price * item.quantity).toFixed(2)
+        }))
+      );
+
+      await sendPaymentConfirmationMail({
+        to: order.user.email,
+        orderId: order._id.toString(),
+        amount: order.totalAmount.toFixed(2),
+        customerName: order.user.fullName || 'Customer',
+        items: allItems
+      });
+
+      console.log('✓ Payment confirmation email sent to:', order.user.email);
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      // Don't fail the payment process if email fails
+    }
+
+    console.log('=== PayFast ITN Processing Complete ===');
 
   } catch (error) {
-    console.error('Verify payment status error:', error);
-    return res.status(500).json({ 
-      message: `Payment verification error: ${error.message}` 
-    });
+    console.error('PayFast webhook error:', error);
+    // Don't send error response as we already sent 200 OK
   }
 };
