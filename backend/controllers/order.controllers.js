@@ -3,7 +3,8 @@ import Shop from '../models/shop.model.js';
 import User from '../models/user.model.js';
 import DeliveryAssignment from '../models/deliveryAssignment.model.js';
 import mongoose from 'mongoose';
-import { sendDeliveryOtpMail } from '../utils/mail.js';
+import { sendDeliveryOtpMail, sendPaymentConfirmationMail } from '../utils/mail.js';
+import { createPayFastPayment } from '../utils/payfast.js';
 
 export const placeOrder = async (req, res) => {
   try {
@@ -568,19 +569,92 @@ export const verifyDeliveryOtp = async (req, res) => {
 // PayFast Payment Functions
 export const initiatePayFastPayment = async (req, res) => {
   try {
-    const { orderId } = req.body;
-    
-    const order = await Order.findById(orderId).populate('user');
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+    const { cartItems, deliveryAddress, totalAmount } = req.body;
+
+    // Basic validation
+    if (!cartItems || cartItems.length === 0) {
+      return res.status(400).json({ message: 'Cart is empty' });
+    }
+    if (!deliveryAddress?.text || !deliveryAddress?.latitude || !deliveryAddress?.longitude) {
+      return res.status(400).json({ message: 'Send Complete Delivery Address' });
+    }
+    if (!totalAmount || totalAmount < 5) {
+      return res.status(400).json({ message: 'Minimum payment amount is R5.00' });
     }
 
-    // Return payment initiation response
-    return res.status(200).json({
-      orderId: order._id,
-      amount: order.totalAmount,
-      message: "Payment initiated"
+    // Get user
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Group items by shop (reuse logic from placeOrder)
+    const groupItemsByShop = {};
+    cartItems.forEach(item => {
+      const shopId = item.shopId || (item.shop && (item.shop._id || item.shop));
+      if (!shopId) throw new Error('Cart item missing shop id');
+      const shopIdStr = shopId.toString();
+      if (!groupItemsByShop[shopIdStr]) groupItemsByShop[shopIdStr] = [];
+      groupItemsByShop[shopIdStr].push(item);
     });
+
+    const shopOrders = await Promise.all(
+      Object.keys(groupItemsByShop).map(async (shopId) => {
+        const shop = await Shop.findById(shopId).populate('owner');
+        if (!shop) throw new Error(`Shop with id ${shopId} not found`);
+
+        const items = groupItemsByShop[shopId];
+        const subtotal = items.reduce((sum, i) => sum + Number(i.price) * Number(i.quantity), 0);
+
+        return {
+          shop: shop._id,
+          owner: shop.owner?._id,
+          subtotal,
+          shopOrderItems: items.map(i => ({
+            item: i.id,
+            price: i.price,
+            quantity: i.quantity,
+            name: i.name
+          }))
+        };
+      })
+    );
+
+    // Create order in DB with pending payment
+    const newOrder = await Order.create({
+      user: req.userId,
+      paymentMethod: 'online',
+      deliveryAddress,
+      totalAmount,
+      shopOrders,
+      payment: { status: 'pending' }
+    });
+
+    // Build PayFast payment
+    const paymentResult = await createPayFastPayment({
+      orderId: newOrder._id.toString(),
+      amount: totalAmount,
+      customerEmail: user.email,
+      customerName: user.fullName || user.name || user.email,
+      customerPhone: user.mobile || ''
+    });
+
+    if (!paymentResult.success) {
+      // remove order if payment creation failed
+      await Order.findByIdAndDelete(newOrder._id);
+      console.error('PayFast payment creation failed:', paymentResult.error);
+      return res.status(400).json({ message: 'Failed to create payment', error: paymentResult.error });
+    }
+
+    // Update order with payfast reference
+    newOrder.payment.payFastOrderId = newOrder._id.toString();
+    await newOrder.save();
+
+    return res.status(200).json({
+      success: true,
+      paymentUrl: paymentResult.paymentUrl,
+      formData: paymentResult.formData,
+      orderId: newOrder._id.toString()
+    });
+
   } catch (error) {
     console.error('Initiate PayFast payment error:', error);
     return res.status(500).json({ message: `Payment initiation error: ${error.message}` });
@@ -591,16 +665,97 @@ export const verifyPayFastPayment = async (req, res) => {
   try {
     const { orderId } = req.params;
     
-    const order = await Order.findById(orderId);
+    console.log('Verifying payment for order:', orderId);
+
+    const order = await Order.findById(orderId)
+      .populate("shopOrders.shop", "name")
+      .populate("shopOrders.owner", "fullName email mobile socketId")
+      .populate("shopOrders.shopOrderItems.item", "name image price")
+      .populate("user", "fullName email mobile socketId");
+
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    return res.status(200).json({
-      orderId: order._id,
-      paymentStatus: order.payment.status,
-      message: "Payment verified"
+    // Check if user owns this order
+    if (order.user._id.toString() !== req.userId) {
+      return res.status(403).json({ message: "Unauthorized access to order" });
+    }
+
+    // Check if payment is already processed
+    if (order.payment.status === 'paid') {
+      console.log('Payment already verified for order:', orderId);
+      return res.status(200).json({
+        success: true,
+        message: "Payment already verified",
+        order: order,
+        paymentStatus: 'paid'
+      });
+    }
+
+    // Update payment status to paid
+    order.payment.status = 'paid';
+    order.payment.paidAt = new Date();
+    
+    // Update shop orders status
+    order.shopOrders.forEach(shopOrder => {
+      shopOrder.status = 'pending';
     });
+    
+    await order.save();
+
+    console.log('Payment marked as paid for order:', orderId);
+
+    // Send real-time notifications to shop owners
+    const io = req.app.get('io');
+    if (io) {
+      order.shopOrders.forEach(shopOrder => {
+        const ownerSocketId = shopOrder.owner?.socketId;
+        if (ownerSocketId) {
+          io.to(ownerSocketId).emit('newOrder', {
+            _id: order._id,
+            paymentMethod: order.paymentMethod,
+            user: order.user,
+            shopOrders: shopOrder,
+            createdAt: order.createdAt,
+            deliveryAddress: order.deliveryAddress,
+            payment: order.payment
+          });
+        }
+      });
+    }
+
+    // Send payment confirmation email to customer
+    try {
+      const allItems = order.shopOrders.flatMap(shopOrder =>
+        shopOrder.shopOrderItems.map(item => ({
+          name: item.name || 'Item',
+          quantity: item.quantity,
+          price: (item.price * item.quantity).toFixed(2)
+        }))
+      );
+
+      await sendPaymentConfirmationMail({
+        to: order.user.email,
+        orderId: order._id.toString(),
+        amount: order.totalAmount.toFixed(2),
+        customerName: order.user.fullName || 'Customer',
+        items: allItems
+      });
+
+      console.log('✓ Payment confirmation email sent to:', order.user.email);
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      // Don't fail the payment process if email fails
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment verified successfully",
+      order: order,
+      paymentStatus: 'paid'
+    });
+
   } catch (error) {
     console.error('Verify PayFast payment error:', error);
     return res.status(500).json({ message: `Payment verification error: ${error.message}` });
