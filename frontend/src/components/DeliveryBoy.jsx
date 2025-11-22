@@ -5,6 +5,7 @@ import DeliveryBoyTracking from "./DeliveryBoyTracking";
 import axios from "axios";
 import { motion } from "framer-motion";
 import { FaTruck, FaMapMarkerAlt, FaBox, FaClock } from "react-icons/fa";
+import bgImage from "../assets/generated-image.png";
 
 function DeliveryBoy() {
   const { userData, socket } = useSelector((state) => state.user);
@@ -112,7 +113,7 @@ function DeliveryBoy() {
   }, [userData]);
 
   return (
-    <div className="min-h-screen w-full flex flex-col" style={{ backgroundColor: '#f7d26eff' }}>
+    <div className="min-h-screen w-full flex flex-col" style={{ backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.75), rgba(0,0,0,0.75)), url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}>
       <Nav />
       <div className="flex-1 w-full flex flex-col items-center px-4 sm:px-6 py-8">
         
