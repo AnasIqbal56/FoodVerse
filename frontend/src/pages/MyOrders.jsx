@@ -8,6 +8,7 @@ import OwnerOrderCard from "../components/OwnerOrderCard";
 import { setMyOrders } from "../redux/userSlice";
 import { updateRealTimeOrderStatus } from "../redux/userSlice";
 import { Package, Clock, CheckCircle, Truck, Filter } from "lucide-react";
+import bgImage from "../assets/generated-image.png";
 
 
 function MyOrders() {
@@ -71,38 +72,7 @@ function MyOrders() {
   };
 
   return (
-    <div className="w-full min-h-screen flex justify-center px-4" style={{ backgroundColor: '#f7d26eff' }}>
-      {/* Enhanced Background with animated gradients */}
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #f7d26eff 0%, #fef3c7 50%, #f5f3ff 100%)' }} />
-        <motion.div
-          animate={{ 
-            backgroundPosition: ["0% 0%", "100% 100%"],
-            opacity: [0.3, 0.5, 0.3]
-          }}
-          transition={{ duration: 15, repeat: Infinity }}
-          className="absolute inset-0"
-          style={{ 
-            background: 'linear-gradient(135deg, rgba(193, 18, 31, 0.1), rgba(190, 146, 2, 0.08))',
-            backgroundSize: "200% 200%"
-          }}
-        />
-        <div className="absolute inset-0 opacity-[0.03] bg-[repeating-linear-gradient(45deg,transparent,transparent_35px,rgba(255,69,0,0.1)_35px,rgba(255,69,0,0.1)_70px)]" />
-        
-        {/* Floating orbs */}
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2] }}
-          transition={{ duration: 10, repeat: Infinity }}
-          className="absolute top-20 right-20 w-96 h-96 rounded-full blur-3xl"
-          style={{ backgroundColor: 'rgba(193, 18, 31, 0.15)' }}
-        />
-        <motion.div
-          animate={{ scale: [1.2, 1, 1.2], opacity: [0.15, 0.3, 0.15] }}
-          transition={{ duration: 12, repeat: Infinity }}
-          className="absolute bottom-20 left-20 w-96 h-96 rounded-full blur-3xl"
-          style={{ backgroundColor: 'rgba(190, 146, 2, 0.15)' }}
-        />
-      </div>
+    <div className="w-full min-h-screen flex justify-center px-4" style={{ backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.75), rgba(0,0,0,0.75)), url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}>
 
       <div className="w-full max-w-[1400px] p-4 md:p-6 py-8">
         {/* Enhanced Header with breadcrumb */}
@@ -119,18 +89,18 @@ function MyOrders() {
               className="cursor-pointer p-2 rounded-full hover:bg-white/30 transition-all" 
               onClick={() => navigate("/home")}
             >
-              <IoIosArrowRoundBack size={40} style={{ color: '#C1121F' }} />
+              <IoIosArrowRoundBack size={60} style={{ color: '#C1121F', fontWeight: 'bold' }} />
             </motion.div>
             <div className="flex-1">
-              <div className="flex items-center gap-2 text-sm mb-2" style={{ color: '#2C1810', opacity: 0.6 }}>
+              <div className="flex items-center gap-2 text-sm mb-2 text-white/70">
                 <span className="cursor-pointer hover:underline" onClick={() => navigate("/home")}>Home</span>
                 <span>/</span>
                 <span className="font-semibold">Orders</span>
               </div>
-              <h1 className="text-4xl md:text-6xl font-black font-playfair" style={{ color: '#3E2723' }}>
+              <h1 className="text-4xl md:text-6xl font-black font-playfair text-white drop-shadow-lg">
                 {userData?.role === "owner" ? "Restaurant Orders" : "My Orders"}
               </h1>
-              <p className="text-lg mt-2" style={{ color: '#2C1810', opacity: 0.7 }}>
+              <p className="text-lg mt-2 text-white/90 drop-shadow-md">
                 {userData?.role === "owner" ? "Manage and track your restaurant orders" : "Track your food orders in real-time"}
               </p>
             </div>

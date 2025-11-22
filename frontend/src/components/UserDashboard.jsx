@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setSearchItems } from "../redux/userSlice.js";
 import { divIcon } from "leaflet";
+import bgImage from "../assets/generated-image.png";
 
 
 function UserDashboard() {
@@ -82,10 +83,10 @@ useEffect(() => {
 
 
   return (
-    <div className="w-screen min-h-screen flex flex-col gap-5 items-center bg-[#fff9f6] overflow-y-auto">
+    <div className="w-screen min-h-screen flex flex-col gap-5 items-center overflow-y-auto" style={{ backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.75), rgba(0,0,0,0.75)), url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}>
       <Nav />
 {searchItems && searchItems.length>0 && (
-  <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-5 bg-white rounded-2xl shadow-md mt-4">
+  <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-5 bg-white/95 backdrop-blur-lg rounded-2xl shadow-md mt-4">
       <h1 className="text-gray-800 text-2xl sm:text-3xl font-semibold border-b-2 pb-2 border-gray">
           Search Results
         </h1>
@@ -100,7 +101,7 @@ useEffect(() => {
     )}
 
       <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-[10px]">
-        <h1 className="text-gray-800 text-2xl sm:text-3xl">
+        <h1 className="text-white text-2xl sm:text-3xl font-bold drop-shadow-lg">
           Inspiration for your first order
         </h1>
         <div className="w-full relative">
@@ -133,7 +134,7 @@ useEffect(() => {
         </div>
       </div>
       <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-[10px]">
-        <h1 className="text-gray-800 text-2xl sm:text-3xl"> Best Shop in {currentCity}</h1>
+        <h1 className="text-white text-2xl sm:text-3xl font-bold drop-shadow-lg"> Best Shop in {currentCity}</h1>
         <div className="w-full relative">
           {showLeftShopButton && (
             <button
@@ -165,7 +166,7 @@ useEffect(() => {
 
       </div>
       <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-[10px]">
-        <h1 className="text-gray-800 text-2xl sm:text-3xl">
+        <h1 className="text-white text-2xl sm:text-3xl font-bold drop-shadow-lg">
           Suggested Food Items
         </h1>
         <div className="w-full h-auto flex flex-wrap gap-[20px] justify-center">

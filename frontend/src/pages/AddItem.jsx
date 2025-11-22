@@ -8,6 +8,7 @@ import { useState } from "react";
 import { setMyShopData } from "../redux/ownerSlice";
 import { serverUrl } from "../App";
 import ClipLoader from "react-spinners/ClipLoader";
+import bgImage from '../assets/generated-image.png';
 
 function AddItem() {
     const [loading, setLoading] = useState(false);
@@ -64,10 +65,10 @@ function AddItem() {
         
     }
     return (
-        <div className="flex justify-center flex-col items-center p-6 bg-gradient-to-br from-orange-50 relative to-white min-h-screen">
+        <div className="flex justify-center flex-col items-center p-6 relative min-h-screen bg-cover bg-center" style={{ backgroundImage: `linear-gradient(to bottom right, rgba(255,255,255,0.6), rgba(245,245,245,0.6)), url(${bgImage})` }}>
 
             <div className="absolute top-[20px] left-[20px] z-[10] mb-[10px]">
-                <IoIosArrowRoundBack size={35} className="text-[#ff4d2d] cursor-pointer" onClick={() => navigate("/home")} />
+                <IoIosArrowRoundBack size={60} className="text-[#ff4d2d] cursor-pointer" onClick={() => navigate("/home")} />
             </div>
 
             <div className="max-w-lg w-full bg-white shadow-xl rounded-2xl p-8 border border-orange-100">

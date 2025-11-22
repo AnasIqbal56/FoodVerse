@@ -16,8 +16,14 @@ function OrderPlaced() {
     useEffect(() => {
         const verifyPayment = async () => {
             const pendingOrderId = localStorage.getItem('pendingOrderId');
+            const orderPlaced = localStorage.getItem('orderPlaced');
             
-            if (pendingOrderId) {
+            if (orderPlaced === 'cod') {
+                // COD order - no verification needed
+                setPaymentStatus('success');
+                dispatch(clearCart());
+                localStorage.removeItem('orderPlaced');
+            } else if (pendingOrderId) {
                 try {
                     // Verify payment status from backend
                     const result = await axios.get(
@@ -42,14 +48,13 @@ function OrderPlaced() {
                     setPaymentStatus('failed');
                 }
             } else {
-                // COD order - no verification needed
-                setPaymentStatus('success');
-                dispatch(clearCart());
+                // No order info found - redirect to home
+                navigate('/home');
             }
         };
 
         verifyPayment();
-    }, [dispatch]);
+    }, [dispatch, navigate]);
 
     if (paymentStatus === 'loading') {
         return (

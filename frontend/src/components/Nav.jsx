@@ -14,13 +14,35 @@ import { signOut } from "firebase/auth";
 import { auth } from "../../firebase";
 
 function Nav() {
-  const { userData, currentCity, cartItems } = useSelector((state) => state.user);
+  const { userData, currentCity, cartItems, myOrders } = useSelector((state) => state.user);
   const { myShopData } = useSelector((state) => state.owner);
   const [showInfo, setShowInfo] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+
+  // Calculate pending orders count for owners
+  const pendingOrdersCount = React.useMemo(() => {
+    if (userData?.role !== 'owner' || !myShopData?._id || !Array.isArray(myOrders)) return 0;
+    
+    let count = 0;
+    myOrders.forEach(order => {
+      // For owners, shopOrders is a single object, not an array
+      if (order.shopOrders && !Array.isArray(order.shopOrders)) {
+        if (order.shopOrders.shop?._id === myShopData._id && order.shopOrders.status === 'pending') {
+          count++;
+        }
+      } else if (Array.isArray(order.shopOrders)) {
+        order.shopOrders.forEach(shopOrder => {
+          if (shopOrder.shop?._id === myShopData._id && shopOrder.status === 'pending') {
+            count++;
+          }
+        });
+      }
+    });
+    return count;
+  }, [userData?.role, myShopData?._id, myOrders]);
   
 
 
@@ -146,12 +168,14 @@ function Nav() {
             >
               <LuReceipt size={20} />
               <span>My Orders</span>
-              <span
-                className="absolute -right-2 -top-2 text-xs font-bold text-white 
-                bg-[#C1121F] rounded-full px-[6px] py-[1px]"
-              >
-                0
-              </span>
+              {pendingOrdersCount > 0 && (
+                <span
+                  className="absolute -right-2 -top-2 text-xs font-bold text-white 
+                  bg-[#C1121F] rounded-full px-[6px] py-[1px] min-w-[20px] text-center"
+                >
+                  {pendingOrdersCount}
+                </span>
+              )}
             </div>
 
             <div
@@ -160,14 +184,19 @@ function Nav() {
               onClick={() => navigate("/my-orders")}
             >
               <LuReceipt size={20} />
-              <span
-                className="absolute -right-2 -top-2 text-xs font-bold text-white 
-                bg-[#C1121F] rounded-full px-[6px] py-[1px]"
-              >
-                0
-              </span>
+              {pendingOrdersCount > 0 && (
+                <span
+                  className="absolute -right-2 -top-2 text-xs font-bold text-white 
+                  bg-[#C1121F] rounded-full px-[6px] py-[1px] min-w-[20px] text-center"
+                >
+                  {pendingOrdersCount}
+                </span>
+              )}
             </div>
           </>
+        ) : userData.role === "deliveryBoy" ? (
+          // No buttons for delivery boy
+          <></>
         ) : (
           <>
             {userData.role === "user" && (
@@ -227,6 +256,14 @@ function Nav() {
             >
               My Orders
             </div>
+            {userData.role !== "deliveryBoy" && (
+              <div
+                className="md:hidden text-[#C1121F] font-semibold cursor-pointer"
+                onClick={() => navigate("/my-orders")}
+              >
+                My Orders
+              </div>
+            )}
             <div
               className="text-[#C1121F] font-semibold cursor-pointer"
               onClick={handleLogout}

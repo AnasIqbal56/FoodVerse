@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaPen, FaTrashAlt } from "react-icons/fa";
+import { FaPen, FaTrashAlt, FaStar } from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import axios from 'axios';
@@ -31,6 +31,23 @@ function OwnerItemCard({ data }) {
 
   const itemImage = data?.image ? resolveImage(data.image) : null;
 
+  const renderStars = (rating) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+
+    for (let i = 1; i <= 5; i++) {
+      if (i <= fullStars) {
+        stars.push(<FaStar key={i} className="text-yellow-500" size={14} />);
+      } else if (i === fullStars + 1 && hasHalfStar) {
+        stars.push(<FaStar key={i} className="text-yellow-500 opacity-50" size={14} />);
+      } else {
+        stars.push(<FaStar key={i} className="text-gray-300" size={14} />);
+      }
+    }
+    return stars;
+  };
+
   return (
     <div className="bg-white shadow-md rounded-lg overflow-hidden border 
     w-full max-w-2xl flex items-center h-44" style={{ borderColor: '#C1121F20' }}>
@@ -43,6 +60,18 @@ function OwnerItemCard({ data }) {
           <h2 className="text-base font-semibold" style={{ color: '#3E2723' }}>{data.name}</h2>
           <p><span className="font-medium text-gray-700">Category:</span> {data.category}</p>
           <p><span className="font-medium text-gray-700">Food Type:</span> {data.foodType}</p>
+          
+          {/* Rating Display */}
+          {data.rating && data.rating.count > 0 && (
+            <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-1">
+                {renderStars(data.rating.average)}
+              </div>
+              <span className="text-sm text-gray-600">
+                {data.rating.average.toFixed(1)} ({data.rating.count} {data.rating.count === 1 ? 'review' : 'reviews'})
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-between items-center mt-2">

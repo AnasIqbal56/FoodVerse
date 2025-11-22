@@ -13,6 +13,7 @@ import { FaMobileButton } from "react-icons/fa6";
 import { FaCreditCard } from "react-icons/fa";
 import { serverUrl } from '../App';
 import { addMyOrder } from '../redux/userSlice';
+import bgImage from '../assets/generated-image.png';
 
 
 function ReCenterMap({ location }) {
@@ -107,6 +108,7 @@ function CheckOut() {
         }, { withCredentials: true });
         
         dispatch(addMyOrder(result.data));
+        localStorage.setItem('orderPlaced', 'cod'); // Mark as COD order
         navigate("/order-placed");
       } else if (paymentMethod === 'online') {
         // Initiate PayFast payment
@@ -169,9 +171,9 @@ function CheckOut() {
   const defaultPosition = { lat: 24.8607, lon: 67.0011 };
 
   return (
-    <div className="min-h-screen bg-[#fff9f6] flex items-center justify-center p-6">
-      <div className="absolute top-[20px] left-[20px] z-[10]" onClick={() => navigate('/home')}>
-        <IoIosArrowRoundBack size={35} className="text-[#ff4d2d]" />
+    <div className="min-h-screen flex items-center justify-center p-6 bg-cover bg-center" style={{ backgroundImage: `linear-gradient(to bottom right, rgba(255,255,255,0.6), rgba(245,245,245,0.6)), url(${bgImage})` }}>
+      <div className="absolute top-[20px] left-[20px] z-[10]" onClick={() => navigate('/cart')}>
+        <IoIosArrowRoundBack size={60} className="text-[#ff4d2d]" />
       </div>
 
       <div className="w-full max-w-[900px] bg-white p-6 rounded-2xl shadow-xl space-y-6">

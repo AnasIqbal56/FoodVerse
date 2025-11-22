@@ -131,6 +131,42 @@ export const getMyOrders = async (req, res) => {
       }));
 
       return res.status(200).json(filteredOrders);
+    } else if (user.role === "deliveryBoy") {
+      // Get all completed assignments for this delivery boy
+      const completedAssignments = await DeliveryAssignment.find({
+        assignedTo: req.userId,
+        status: "completed"
+      }).distinct("order");
+
+      // Get all orders where delivery boy delivered
+      const orders = await Order.find({
+        _id: { $in: completedAssignments }
+      })
+        .sort({ createdAt: -1 })
+        .populate("shopOrders.shop", "name")
+        .populate("user", "fullName email mobile")
+        .populate("shopOrders.shopOrderItems.item", "name image price")
+        .lean();
+
+      // Filter to show only the shop orders that this delivery boy delivered
+      const filteredOrders = [];
+      for (const order of orders) {
+        const deliveredShopOrder = order.shopOrders.find(
+          (so) => so.assignedDeliveryBoy && so.assignedDeliveryBoy.toString() === req.userId && so.status === "delivered"
+        );
+        if (deliveredShopOrder) {
+          filteredOrders.push({
+            _id: order._id,
+            paymentMethod: order.paymentMethod,
+            user: order.user,
+            shopOrders: deliveredShopOrder,
+            createdAt: order.createdAt,
+            deliveryAddress: order.deliveryAddress
+          });
+        }
+      }
+
+      return res.status(200).json(filteredOrders);
     }
 
   } catch (error) {
@@ -151,6 +187,16 @@ export const updateOrderStatus = async (req, res) => {
     );
     if (!shopOrder)
       return res.status(404).json({ message: "Shop order not found" });
+
+    // Prevent owner from changing status back if already out for delivery
+    const currentStatus = shopOrder.status.toLowerCase().trim();
+    if (currentStatus === "out of delivery") {
+      if (status === "pending" || status === "preparing") {
+        return res.status(400).json({ 
+          message: "Cannot change status back to pending or preparing once out for delivery" 
+        });
+      }
+    }
 
     shopOrder.status = status;
 
@@ -451,7 +497,10 @@ export const sendDeliveryOtp = async (req, res) => {
 export const verifyDeliveryOtp = async (req, res) => {
   try {
     const { orderId, shopOrderId, otp } = req.body
-    const order = await Order.findById(orderId).populate("user")
+    const order = await Order.findById(orderId)
+      .populate("user", "fullName email socketId")
+      .populate("shopOrders.shop", "name")
+      .populate("shopOrders.owner", "socketId")
     const shopOrder = order.shopOrders.id(shopOrderId)
     if (!order || !shopOrder) {
       return res.status(400).json({ message: "enter valid order/shopOrderId" })
@@ -470,14 +519,44 @@ export const verifyDeliveryOtp = async (req, res) => {
     shopOrder.status = "delivered"
     shopOrder.deliveredAt = Date.now()
     await order.save()
-    await DeliveryAssignment.deleteOne(
+    
+    // Update assignment status to completed instead of deleting
+    await DeliveryAssignment.updateOne(
       {
         order: order._id,
-        shopOrder: shopOrder._id,
+        shopOrderId: shopOrder._id,
         assignedTo: shopOrder.assignedDeliveryBoy
-
+      },
+      {
+        status: "completed"
       }
     )
+
+    // Emit socket event to owner about delivery completion
+    const io = req.app.get('io');
+    if (io) {
+      const ownerSocketId = shopOrder.owner?.socketId;
+      if (ownerSocketId) {
+        io.to(ownerSocketId).emit('update-status', {
+          orderId: order._id,
+          shopId: shopOrder.shop._id,
+          status: "delivered",
+          userId: shopOrder.owner._id
+        });
+      }
+
+      // Emit to user as well
+      const userSocketId = order.user?.socketId;
+      if (userSocketId) {
+        io.to(userSocketId).emit('update-status', {
+          orderId: order._id,
+          shopId: shopOrder.shop._id,
+          status: "delivered",
+          userId: order.user._id
+        });
+      }
+    }
+
     return res.status(200).json({ message: "Order Delivered Successfully" })
 
   } catch (error) {

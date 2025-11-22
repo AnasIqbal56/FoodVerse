@@ -82,9 +82,14 @@ function DeliveryBoy() {
       );
       console.log('[OTP Verification Success]', result.data);
       alert('Delivery verified! Order marked as delivered.');
+      
+      // Clear current order state immediately
+      setCurrentOrder(null);
       setOtp('');
       setShowOTPBox(false);
-      await getCurrentOrder();
+      
+      // Refresh assignments to show new available orders
+      await getAssignments();
     } catch (error) {
       console.error('[OTP Verification Error]', error.response?.data || error.message);
       alert(`OTP Verification failed: ${error.response?.data?.message || error.message}`);
@@ -132,7 +137,7 @@ function DeliveryBoy() {
               </h1>
             </div>
             <p className="text-base" style={{ color: '#2C1810', opacity: 0.85 }}>
-              Your status: <span className="font-semibold">Active & Ready for Deliveries</span>
+              Your status: <span className="font-semibold ">Active & Ready for Deliveries</span>
             </p>
           </motion.div>
         </div>
@@ -147,7 +152,7 @@ function DeliveryBoy() {
               style={{ color: '#3E2723' }}
             >
               <FaBox className="text-[#C1121F]" />
-              Available Orders
+             <p style={{color:"#f6d26f"}}>Available Orders</p>
             </motion.h2>
             
             <div className="space-y-4">
@@ -179,7 +184,7 @@ function DeliveryBoy() {
                           <div className="flex items-center gap-2">
                             <FaBox className="text-[#be9202ff]" size={14} />
                             <p className="text-sm font-medium" style={{ color: '#2C1810' }}>
-                              {a?.items?.length || 0} items • ₹{a?.subtotal || 0}
+                              {a?.items?.length || 0} items • Rs{a?.subtotal || 0}
                             </p>
                           </div>
                         </div>
@@ -219,7 +224,7 @@ function DeliveryBoy() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-3xl font-bold mb-6 flex items-center gap-3" 
-              style={{ color: '#3E2723' }}
+              style={{ color: '#f6d26f' }}
             >
               <FaClock className="text-[#C1121F]" />
               Active Delivery
@@ -265,12 +270,8 @@ function DeliveryBoy() {
                     <div>
                       <p className="text-sm text-gray-500">Subtotal</p>
                       <p className="font-semibold" style={{ color: '#3E2723' }}>
-                        ₹{currentOrder?.shopOrder?.subtotal || 0}
+                        Rs{currentOrder?.shopOrder?.subtotal || 0}
                       </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Status</p>
-                      <p className="font-semibold text-orange-600">Out for Delivery</p>
                     </div>
                   </div>
                 </div>
@@ -314,7 +315,7 @@ function DeliveryBoy() {
                       maxLength={6}
                       className="w-full border-2 rounded-lg px-4 py-3 mb-3 focus:outline-none font-semibold text-center text-lg tracking-widest"
                       style={{ borderColor: '#C1121F40', color: '#3E2723' }}
-                      placeholder="000000"
+                      placeholder="0000"
                       onChange={(e) => setOtp(e.target.value)}
                       value={otp}
                     />

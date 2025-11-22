@@ -120,19 +120,32 @@ function OwnerOrderCard({ data }) {
             </span>
           </div>
 
-          <select
-            className="px-6 py-3 rounded-xl font-bold text-sm focus:outline-none focus:ring-4 shadow-lg transition-all text-white cursor-pointer"
-            style={{ backgroundColor: '#C1121F', borderColor: '#C1121F' }}
-            onChange={(e) =>
-              handleUpdateStatus(data._id, shopOrder?.shop?._id, e.target.value)
-            }
-          >
-            <option value="">Update Status</option>
-            <option value="pending">Pending</option>
-            <option value="preparing">Preparing</option>
-            <option value="out of delivery">Out of Delivery</option>
-            <option value="delivered">Delivered</option>
-          </select>
+          {statusNormalized !== 'delivered' && statusNormalized !== 'out of delivery' && (
+            <select
+              className="px-6 py-3 rounded-xl font-bold text-sm focus:outline-none focus:ring-4 shadow-lg transition-all text-white cursor-pointer"
+              style={{ backgroundColor: '#C1121F', borderColor: '#C1121F' }}
+              onChange={(e) =>
+                handleUpdateStatus(data._id, shopOrder?.shop?._id, e.target.value)
+              }
+            >
+              <option value="">Update Status</option>
+              <option value="pending">Pending</option>
+              <option value="preparing">Preparing</option>
+              <option value="out of delivery">Out of Delivery</option>
+            </select>
+          )}
+          
+          {statusNormalized === 'delivered' && (
+            <div className="px-6 py-3 rounded-xl font-bold text-sm text-white shadow-lg" style={{ backgroundColor: '#10b981' }}>
+              ✓ Order Delivered
+            </div>
+          )}
+          
+          {statusNormalized === 'out of delivery' && (
+            <div className="px-6 py-3 rounded-xl font-bold text-sm text-white shadow-lg" style={{ backgroundColor: '#f59e0b' }}>
+              ⏳ Awaiting delivery confirmation
+            </div>
+          )}
         </div>
 
         {/* AVAILABLE BOYS */}
