@@ -5,7 +5,7 @@ import Item from "../models/item.model.js";
 // Add item
 export const addItem = async (req, res) => {
   try {
-    const { name, category, price, foodType } = req.body;
+    const { name, category, price, foodType, dietType, spiceLevel, allergens, tags } = req.body;
     let image;
     if (req.file) {
       image = await uploadOnCloudinary(req.file.path);
@@ -23,6 +23,11 @@ export const addItem = async (req, res) => {
       foodType,
       image,
       shop: shop._id,
+      dietType: dietType ? JSON.parse(dietType) : [],
+      spiceLevel: spiceLevel || 'medium',
+      allergens: allergens ? JSON.parse(allergens) : [],
+      tags: tags ? JSON.parse(tags) : [],
+      salesCount: 0
     });
 
     shop.items.push(item._id);
@@ -40,22 +45,28 @@ export const addItem = async (req, res) => {
 export const editItem = async (req, res) => {
   try {
     const { itemId } = req.params;
-    const { name, category, price, foodType } = req.body;
+    const { name, category, price, foodType, dietType, spiceLevel, allergens, tags } = req.body;
     let image;
 
     if (req.file) {
       image = await uploadOnCloudinary(req.file.path);
     }
 
+    const updateData = {
+      name,
+      category,
+      price,
+      foodType,
+      ...(image && { image }),
+      ...(dietType && { dietType: JSON.parse(dietType) }),
+      ...(spiceLevel && { spiceLevel }),
+      ...(allergens && { allergens: JSON.parse(allergens) }),
+      ...(tags && { tags: JSON.parse(tags) })
+    };
+
     const item = await Item.findByIdAndUpdate(
       itemId,
-      {
-        name,
-        category,
-        price,
-        foodType,
-        ...(image && { image }), // only update image if provided
-      },
+      updateData,
       { new: true }
     );
 

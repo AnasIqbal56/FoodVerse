@@ -195,7 +195,7 @@ function Nav() {
             </div>
           </>
         ) : userData.role === "deliveryBoy" ? (
-          // No buttons for delivery boy
+        
           <></>
         ) : (
           <>
@@ -212,14 +212,13 @@ function Nav() {
               </div>
             )}
 
-            {/* AI WORLD Button - Add this */}
             {userData.role === "user" && (
             <button
                 className="px-3 py-1 rounded-lg bg-[#C1121F]/10
                 text-[#C1121F] text-sm font-medium"
-                    onClick={() => navigate("/ai-world")}
+                onClick={() => navigate("/recommendations")}
                       >
-                      AI WORLD
+                      Recommendations For You
             </button>
               )}
 

@@ -13,7 +13,7 @@ import bgImage from "../assets/generated-image.png";
 
 
 function UserDashboard() {
-  const {currentCity, shopInMyCity,itemsInMyCity,searchItems} = useSelector(state => state.user)
+  const {currentCity, shopInMyCity,itemsInMyCity,searchItems, userData} = useSelector(state => state.user)
   console.log("Search Items in Dashboard:", searchItems);
   const cateScrollRef = useRef();
   const shopScrollRef = useRef();
@@ -133,6 +133,7 @@ useEffect(() => {
           )}
         </div>
       </div>
+
       <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-[10px]">
         <h1 className="text-white text-2xl sm:text-3xl font-bold drop-shadow-lg"> Best Shop in {currentCity}</h1>
         <div className="w-full relative">

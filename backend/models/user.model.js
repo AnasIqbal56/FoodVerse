@@ -51,6 +51,71 @@ const userSchema = new mongoose.Schema({
         default: [0, 0],
       },
     },
+    
+    // ========== NEW RECOMMENDATION FIELDS ==========
+    
+    // User's dietary preferences (can select multiple)
+    dietaryPreference: [{
+        type: String,
+        enum: [
+            "veg", "non-veg", "vegan", "vegetarian-strict", "kosher", "jain",
+            "keto", "low-carb", "low-fat", "high-protein", "low-calorie",
+            "gluten-free", "dairy-free", "sugar-free", "low-sodium",
+            "diabetic-friendly", "heart-healthy", "weight-loss", "mediterranean", "paleo"
+        ],
+    }],
+    
+    // User's allergies to avoid
+    allergies: [{
+        type: String,
+        enum: [
+            "milk", "eggs", "fish", "shellfish", "tree-nuts", "peanuts",
+            "wheat", "soy", "sesame", "mustard", "sulfites", "corn",
+            "celery", "lupin", "gelatin", "artificial-colors", "preservatives"
+        ],
+    }],
+    
+    // User's favorite tags
+    favoriteTags: [{
+        type: String,
+        enum: ["spicy", "crispy", "grilled", "cheesy", "creamy", "tangy", "sweet", "savory", "healthy", "comfort-food", "quick-bite"],
+    }],
+    
+    // Categories user frequently orders from
+    favoriteCategories: [{
+        type: String,
+        enum: [
+            "Snacks",
+            "Main Course",
+            "Desserts",
+            "Pizza",
+            "Burgers",
+            "Sandwiches",
+            "South Indian",
+            "North Indian",
+            "Chinese",
+            "Fast Food",
+            "Beverages",
+            "Others"
+        ]
+    }],
+    
+    // Order history for personalized recommendations
+    orderHistory: [{
+        itemId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Item'
+        },
+        timesOrdered: {
+            type: Number,
+            default: 1,
+            min: 1
+        },
+        lastOrderedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }]
   },
   { timestamps: true }
 );

@@ -14,15 +14,11 @@ import { FaUtensils } from "react-icons/fa6";
 
 // Food Slider Data
 const foodItems = [
-  { id: 1, name: "Gourmet Burger", image: image1, description: "Juicy, Fresh & Delicious" },
-  { id: 2, name: "Classic Pizza", image: image2, description: "Crispy Crust, Premium Toppings" },
+  { id: 1, name: "Japanese Cuisine", image: image1, description: "Juicy, Fresh & Delicious" },
+  { id: 2, name: "Chinese Goodness", image: image2, description: "Crispy Crust, Premium Toppings" },
   { id: 3, name: "Asian Delights", image: image3, description: "Authentic & Flavorful" },
 ];
 
-// Static Emojis Component (NO ANIMATION)
-const StaticEmoji = ({ emoji }) => (
-  <span className="inline-block text-5xl">{emoji}</span>
-);
 
 function LandingPage() {
   const navigate = useNavigate();

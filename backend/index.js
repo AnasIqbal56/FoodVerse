@@ -11,6 +11,7 @@ import itemRouter from "./routes/item.routes.js";
 import orderRouter from "./routes/order.routes.js";
 import contactRouter from "./routes/contact.routes.js";
 import ratingRouter from "./routes/rating.routes.js";
+import recommendationRouter from "./routes/recommendation.routes.js";
 import  http from "http";
 import { Server } from "socket.io";
 import { socketHandler } from "./socket.js";
@@ -62,6 +63,7 @@ app.use ("/api/item",itemRouter)
 app.use ("/api/order",orderRouter)
 app.use ("/api/contact",contactRouter)
 app.use ("/api/rating",ratingRouter)
+app.use ("/api/recommendations",recommendationRouter)
 socketHandler(io)
 server.listen(port, () => {
     connectDb()

@@ -67,6 +67,55 @@ export const placeOrder = async (req, res) => {
     await newOrder.populate("shopOrders.owner", "name socketId");
     await newOrder.populate("user", "name email mobile socketId");
 
+    // ========== TRACK ORDER FOR RECOMMENDATIONS ==========
+    // Update user's order history and item sales count
+    const orderedItemIds = [];
+    newOrder.shopOrders.forEach(shopOrder => {
+      shopOrder.shopOrderItems.forEach(orderItem => {
+        orderedItemIds.push(orderItem.item);
+      });
+    });
+
+    // Update user's order history
+    if (orderedItemIds.length > 0) {
+      const user = await User.findById(req.userId);
+      if (user) {
+        for (const itemId of orderedItemIds) {
+          const existingIndex = user.orderHistory.findIndex(
+            oh => oh.itemId.toString() === itemId.toString()
+          );
+
+          if (existingIndex >= 0) {
+            user.orderHistory[existingIndex].timesOrdered += 1;
+            user.orderHistory[existingIndex].lastOrderedAt = new Date();
+          } else {
+            user.orderHistory.push({
+              itemId,
+              timesOrdered: 1,
+              lastOrderedAt: new Date()
+            });
+          }
+        }
+
+        // Auto-update favorite categories
+        const Item = (await import('../models/item.model.js')).default;
+        const items = await Item.find({ _id: { $in: orderedItemIds } }).select('category');
+        items.forEach(item => {
+          if (!user.favoriteCategories.includes(item.category)) {
+            user.favoriteCategories.push(item.category);
+          }
+        });
+
+        await user.save();
+
+        // Increment sales count for items
+        await Item.updateMany(
+          { _id: { $in: orderedItemIds } },
+          { $inc: { salesCount: 1 } }
+        );
+      }
+    }
+
     const io = req.app.get('io')
 
     if (io) {

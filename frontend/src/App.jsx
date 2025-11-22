@@ -23,7 +23,8 @@ import useUpdateLocation from "./hooks/useUpdateLocation";
 import TrackOrderPage from "./pages/TrackOrderPage.jsx";
 import Shop from "./pages/Shop.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
-import AIWorld from "./pages/AIWorld.jsx";
+import RecommendationsPage from "./pages/RecommendationsPage.jsx";
+
 import PaymentSuccess from "./pages/PaymentSuccess.jsx";
 import PaymentCancelled from "./pages/PaymentCancelled.jsx";
 
@@ -118,9 +119,11 @@ function App() {
         path="/shop/:shopId"
         element={userData ? <Shop /> : <Navigate to="/signin" replace />}
       />
-       <Route path="/ai-world" 
-       element={<AIWorld />} 
-       />
+      <Route
+        path="/recommendations"
+        element={userData ? <RecommendationsPage /> : <Navigate to="/signin" replace />}
+      />
+       
     </Routes>
   );
 }
