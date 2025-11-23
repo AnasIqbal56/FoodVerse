@@ -31,7 +31,7 @@ export const sendDeliveryOtpMail = async ({user,otp}) => {
 
 export const sendPaymentConfirmationMail = async ({to, orderId, amount, customerName, items}) => {
     const itemsList = items && items.length > 0 
-        ? items.map(item => `<li>${item.name} x ${item.quantity} - R${item.price}</li>`).join('')
+        ? items.map(item => `<li>${item.name} x ${item.quantity} - Rs ${item.price}</li>`).join('')
         : '<li>Order items</li>';
     
     await transporter.sendMail({
@@ -48,11 +48,12 @@ export const sendPaymentConfirmationMail = async ({to, orderId, amount, customer
                     <div style="background-color: #f0fdf4; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                         <h3 style="color: #3E2723; margin-top: 0;">Order Details</h3>
                         <p style="margin: 5px 0;"><strong>Order ID:</strong> ${orderId}</p>
-                        <p style="margin: 5px 0;"><strong>Amount Paid:</strong> R${amount}</p>
+                        <p style="margin: 5px 0;"><strong>Amount Paid:</strong> Rs ${amount}</p>
+                        <p style="margin: 5px 0;"><strong>Payment Method:</strong> Online (Stripe)</p>
                     </div>
                     
                     <div style="margin-bottom: 20px;">
-                        <h3 style="color: #3E2723;">Items:</h3>
+                        <h3 style="color: #3E2723;">Items Ordered:</h3>
                         <ul style="color: #555;">
                             ${itemsList}
                         </ul>

@@ -68,10 +68,7 @@ const StripePaymentForm = ({ orderId, onSuccess, onError }) => {
         {isProcessing ? 'Processing...' : 'Pay Now'}
       </button>
 
-      <div className="text-sm text-gray-500 text-center">
-        <p>Test Card: 4242 4242 4242 4242</p>
-        <p>Any future date, any 3-digit CVC</p>
-      </div>
+      
     </form>
   );
 };
