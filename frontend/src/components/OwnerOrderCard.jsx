@@ -1,13 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { MdPhone } from "react-icons/md";
 import axios from "axios";
 import { serverUrl } from "../App";
 import { updateOrderStatus } from "../redux/userSlice";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 function OwnerOrderCard({ data }) {
   const [availableBoys, setAvailableBoys] = useState([]);
   const dispatch = useDispatch();
+  const { socket } = useSelector((state) => state.user);
 
   const shopOrder = data?.shopOrders;
   const [status, setStatus] = useState(shopOrder?.status || "");
@@ -26,14 +27,39 @@ function OwnerOrderCard({ data }) {
       dispatch(updateOrderStatus({ orderId, shopId, status: newStatus }));
 
       if (response.data?.availableBoys) {
+        console.log('[OwnerOrderCard] Available boys from API:', response.data.availableBoys);
         setAvailableBoys(response.data.availableBoys);
+      } else {
+        console.log('[OwnerOrderCard] No available boys in response');
+        setAvailableBoys([]);
       }
 
       console.log("Order status updated:", response.data);
     } catch (error) {
-      console.log("Error updating order:", error);
+      console.error("Error updating order:", error);
     }
   };
+
+  // Listen for new delivery boys coming online
+  useEffect(() => {
+    if (!socket || statusNormalized !== "out of delivery") return;
+
+    const handleNewDeliveryBoyOnline = (data) => {
+      console.log('[OwnerOrderCard] New delivery boy online:', data);
+      // This would typically include logic to add the new delivery boy to available list
+      // For now, we could trigger a refetch or add the boy directly
+      if (data.deliveryBoyId && availableBoys.length < 10) {
+        // Optional: you can add the new boy to the list if needed
+        // Or refetch the assignments - but for now, the boy will appear on next status change
+      }
+    };
+
+    socket.on('deliveryBoyOnline', handleNewDeliveryBoyOnline);
+
+    return () => {
+      socket.off('deliveryBoyOnline', handleNewDeliveryBoyOnline);
+    };
+  }, [socket, statusNormalized, availableBoys]);
 
   return (
     <div className="bg-white/95 rounded-3xl shadow-2xl overflow-hidden border-2" style={{ borderColor: '#be920210' }}>
@@ -153,28 +179,34 @@ function OwnerOrderCard({ data }) {
           <div className="rounded-2xl p-5 border-l-4" style={{ backgroundColor: '#fef3c7', borderColor: '#be9202ff' }}>
             <h3 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: '#3E2723' }}>
               <span className="text-lg">🚴</span> 
-              {data.shopOrders?.assignedDeliveryBoy ? 'Assigned Delivery Boy' : 'Available Delivery Boys'}
+              {shopOrder?.assignedDeliveryBoy 
+                ? `✓ Assigned to ${shopOrder.assignedDeliveryBoy.fullName}` 
+                : `Available Delivery Boys (${availableBoys.length})`}
             </h3>
             {availableBoys.length > 0 ? (
               <div className="space-y-2">
                 {availableBoys.map((b, index) => (
                   <div className="flex items-center justify-between bg-white rounded-xl p-3 shadow-sm" key={index}>
-                    <span className="font-semibold" style={{ color: '#2C1810' }}>{b.fullName}</span>
-                    <span className="text-sm" style={{ color: '#2C1810', opacity: 0.7 }}>{b.mobile}</span>
+                    <div className="flex-1">
+                      <span className="font-semibold block" style={{ color: '#2C1810' }}>{b.fullName}</span>
+                      <span className="text-xs" style={{ color: '#2C1810', opacity: 0.7 }}>📱 {b.mobile}</span>
+                    </div>
                     <button
                       className="ml-4 px-4 py-2 rounded-lg bg-green-600 text-white font-bold text-xs hover:bg-green-700 transition"
                       onClick={async () => {
                         try {
+                          console.log('[OwnerOrderCard] Assigning delivery boy:', b.id);
                           const response = await axios.post(
                             `${serverUrl}/api/order/assign-delivery-boy/${data._id}/${shopOrder?.shop?._id}`,
                             { deliveryBoyId: b.id },
                             { withCredentials: true }
                           );
-                          // Optionally update UI or refetch order data
+                          console.log('[OwnerOrderCard] Assignment successful:', response.data);
                           setAvailableBoys([]);
-                          alert('Delivery boy assigned!');
+                          alert('Delivery boy assigned successfully!');
                         } catch (err) {
-                          alert('Failed to assign delivery boy.');
+                          console.error('[OwnerOrderCard] Assignment failed:', err);
+                          alert('Failed to assign delivery boy: ' + (err.response?.data?.message || err.message));
                         }
                       }}
                     >
@@ -184,14 +216,18 @@ function OwnerOrderCard({ data }) {
                 ))}
               </div>
             ) : (
-              data.shopOrders.assignedDeliveryBoy ? (
-                <div className="flex items-center justify-between bg-white rounded-xl p-3 shadow-sm">
-                  <span className="font-semibold" style={{ color: '#2C1810' }}>{data.shopOrders.assignedDeliveryBoy.fullName}</span>
-                  <span className="text-sm" style={{ color: '#2C1810', opacity: 0.7 }}>{data.shopOrders.assignedDeliveryBoy.mobile}</span>
+              shopOrder?.assignedDeliveryBoy ? (
+                <div className="flex items-center justify-between bg-white rounded-xl p-3 shadow-sm border-l-4" style={{ borderColor: '#10b981' }}>
+                  <div className="flex-1">
+                    <span className="font-semibold block" style={{ color: '#2C1810' }}>{shopOrder.assignedDeliveryBoy.fullName}</span>
+                    <span className="text-xs" style={{ color: '#2C1810', opacity: 0.7 }}>📱 {shopOrder.assignedDeliveryBoy.mobile}</span>
+                  </div>
+                  <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#10b981', color: 'white' }}>Assigned</span>
                 </div>
               ) : (
-                <div className="text-center py-2" style={{ color: '#2C1810', opacity: 0.7 }}>
-                  ⏳ Waiting for delivery boys to accept...
+                <div className="text-center py-4 bg-white rounded-xl" style={{ color: '#2C1810', opacity: 0.7 }}>
+                  <p className="text-sm">⏳ No delivery boys available in your area</p>
+                  <p className="text-xs mt-1 opacity-75">Check back in a few moments as delivery boys come online</p>
                 </div>
               )
             )}

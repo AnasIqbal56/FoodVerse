@@ -256,6 +256,10 @@ export const updateOrderStatus = async (req, res) => {
       const { longitude, latitude } = order.deliveryAddress;
       console.log(`[updateOrderStatus] Finding delivery boys near ${latitude}, ${longitude}`);
       
+      // First, let's see how many delivery boys exist in total
+      const totalDeliveryBoys = await User.countDocuments({ role: "deliveryBoy" });
+      console.log(`[updateOrderStatus] Total delivery boys in database: ${totalDeliveryBoys}`);
+      
       let nearByDeliveryBoys = await User.find({
         role: "deliveryBoy",
         location: {
@@ -271,11 +275,26 @@ export const updateOrderStatus = async (req, res) => {
       // Fallback: if no boys within 5km, get all online delivery boys
       if (nearByDeliveryBoys.length === 0) {
         console.log(`[updateOrderStatus] No delivery boys within 5km, fetching all online delivery boys`);
-        nearByDeliveryBoys = await User.find({
+        const totalOnline = await User.countDocuments({
           role: "deliveryBoy",
           socketId: { $exists: true, $ne: null }
         });
-        console.log(`[updateOrderStatus] Found ${nearByDeliveryBoys.length} online delivery boys total`);
+        console.log(`[updateOrderStatus] Total online delivery boys: ${totalOnline}`);
+        
+        nearByDeliveryBoys = await User.find({
+          role: "deliveryBoy",
+          socketId: { $exists: true, $ne: null }
+        }).select('_id fullName mobile socketId location');
+        
+        console.log(`[updateOrderStatus] Fetched ${nearByDeliveryBoys.length} online delivery boys`);
+        if (nearByDeliveryBoys.length > 0) {
+          console.log(`[updateOrderStatus] Online boys details:`, nearByDeliveryBoys.map(b => ({
+            id: b._id,
+            name: b.fullName,
+            socketId: b.socketId,
+            location: b.location.coordinates
+          })));
+        }
       }
 
       const nearByIds = nearByDeliveryBoys.map(b => b._id);
@@ -379,8 +398,14 @@ export const getDeliveryBoyAssignment = async (req, res) => {
       brodcastedTo: { $in: [deliveryBoyId] },
       status: "broadcasted"
     })
-      .populate("order")
-      .populate("shop");
+      .populate({
+        path: "order",
+        select: "shopOrders deliveryAddress"
+      })
+      .populate({
+        path: "shop",
+        select: "name"
+      });
 
     console.log(`[getDeliveryBoyAssignment] Found ${assignment.length} total assignments`);
 
@@ -392,13 +417,32 @@ export const getDeliveryBoyAssignment = async (req, res) => {
     const formatted = validAssignments.map(a => {
       let items = [];
       let subtotal = 0;
+      let shopOrderName = '';
       
-      if (a.order && Array.isArray(a.order.shopOrders)) {
-        const shopOrder = a.order.shopOrders.find(so => so._id.equals(a.shopOrderId));
+      console.log(`[getDeliveryBoyAssignment] Processing assignment ${a._id}`);
+      console.log(`[getDeliveryBoyAssignment] shopOrderId to match: ${a.shopOrderId}`);
+      
+      if (a.order && Array.isArray(a.order.shopOrders) && a.order.shopOrders.length > 0) {
+        console.log(`[getDeliveryBoyAssignment] Order has ${a.order.shopOrders.length} shopOrders`);
+        
+        // Try both equals and string comparison
+        const shopOrder = a.order.shopOrders.find(so => {
+          const idMatch = String(so._id) === String(a.shopOrderId);
+          console.log(`[getDeliveryBoyAssignment] Comparing ${so._id} with ${a.shopOrderId}: ${idMatch}`);
+          return idMatch;
+        });
+        
         if (shopOrder) {
+          console.log(`[getDeliveryBoyAssignment] ✓ Found matching shopOrder!`);
           items = shopOrder.shopOrderItems || [];
           subtotal = shopOrder.subtotal || 0;
+          console.log(`[getDeliveryBoyAssignment] shopOrderItems count: ${items.length}, subtotal: ${subtotal}`);
+        } else {
+          console.log(`[getDeliveryBoyAssignment] ✗ No matching shopOrder found`);
+          console.log(`[getDeliveryBoyAssignment] Available shopOrderIds in order:`, a.order.shopOrders.map(so => String(so._id)));
         }
+      } else {
+        console.log(`[getDeliveryBoyAssignment] Order shopOrders is empty or not array`);
       }
       
       return {
@@ -412,6 +456,10 @@ export const getDeliveryBoyAssignment = async (req, res) => {
     });
 
     console.log(`[getDeliveryBoyAssignment] Returning ${formatted.length} formatted assignments`);
+    formatted.forEach((f, idx) => {
+      console.log(`[getDeliveryBoyAssignment] Assignment ${idx}: items=${f.items.length}, subtotal=${f.subtotal}`);
+    });
+    
     return res.status(200).json(formatted);
   } catch (error) {
     console.error("getDeliveryBoyAssignment error", error);
