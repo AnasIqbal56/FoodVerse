@@ -24,6 +24,7 @@ import TrackOrderPage from "./pages/TrackOrderPage.jsx";
 import Shop from "./pages/Shop.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import RecommendationsPage from "./pages/RecommendationsPage.jsx";
+import ItemDetails from "./pages/ItemDetails.jsx";
 
 // export const serverUrl =  "https://foodverse-59g3.onrender.com";
 // export const serverUrl = "https://tamera-axenic-matteo.ngrok-free.dev"
@@ -111,6 +112,10 @@ function App() {
       <Route
         path="/recommendations"
         element={userData ? <RecommendationsPage /> : <Navigate to="/signin" replace />}
+      />
+      <Route
+        path="/item/:itemId"
+        element={userData ? <ItemDetails /> : <Navigate to="/signin" replace />}
       />
        
     </Routes>

@@ -84,7 +84,13 @@ export const editItem = async (req, res) => {
 export const getItemById = async (req, res) => {
   try {
     const { itemId } = req.params;
-    const item = await Item.findById(itemId); // ✅ fixed: now it's actually called
+    
+    // Validate ObjectId format
+    if (!itemId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid item ID format" });
+    }
+    
+    const item = await Item.findById(itemId).populate('shop', 'name image city');
 
     if (!item) {
       return res.status(404).json({ message: "Item not found" });
@@ -93,7 +99,8 @@ export const getItemById = async (req, res) => {
     console.log("Fetched item:", item);
     return res.status(200).json(item);
   } catch (error) {
-    return res.status(500).json({ message: `Get item error ${error}` });
+    console.error("Get item error:", error);
+    return res.status(500).json({ message: `Get item error ${error.message}` });
   }
 };
 

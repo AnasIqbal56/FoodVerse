@@ -3,10 +3,12 @@ import { useState, useEffect } from 'react';
 import { FaLeaf , FaDrumstickBite,FaStar,FaRegStar,FaMinus,FaPlus,FaShoppingCart, FaTimes } from 'react-icons/fa'
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart } from '../redux/userSlice';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { serverUrl } from '../App';
 
 function FoodCard({data}) {
+    const navigate = useNavigate();
 
 
     const [quantity,setQuantity]=useState(0)
@@ -59,13 +61,19 @@ const handleOpenReviews = () => {
   return (
     <div className='w-[250px] rounded-2xl border-2 border-[#ff4d2d] bg-white shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col'>
 
-      <div className='relative w-full h-[170px] flex justify-center items-center bg-white'>
+      <div 
+        className='relative w-full h-[170px] flex justify-center items-center bg-white cursor-pointer'
+        onClick={() => navigate(`/item/${data._id}`)}
+      >
       <div className='absolute top-3 right-3 bg-white rounded-full p-1 shadow'>  
         {data.foodType=="veg"?<FaLeaf className='text-green-600 text-lg'/>:<FaDrumstickBite className='text-red-600 text-lg'/>}</div>
         <img src={data.image} alt=""  className='w-full h-full object-cover transition-transform duration-300 hover-scale-105'/>
       </div>
-      <div className='flex-1 flex flex-col p-4'>
-        <h1 className='font-semibold text-gray-900 text-base truncate'>{data.name}</h1>
+      <div 
+        className='flex-1 flex flex-col p-4 cursor-pointer'
+        onClick={() => navigate(`/item/${data._id}`)}
+      >
+        <h1 className='font-semibold text-gray-900 text-base truncate hover:text-[#ff4d2d] transition'>{data.name}</h1>
 <div className='flex items-center justify-between mt-1'>
 <div className='flex items-center gap-1'>
 {renderStars(data.rating?.average || 0)}
