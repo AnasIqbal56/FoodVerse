@@ -3,7 +3,7 @@ import Shop from '../models/shop.model.js';
 import User from '../models/user.model.js';
 import DeliveryAssignment from '../models/deliveryAssignment.model.js';
 import mongoose from 'mongoose';
-import { sendDeliveryOtpMail } from '../utils/mail.js';
+import { sendDeliveryOtpMail, sendPaymentConfirmationMail } from '../utils/mail.js';
 import { createPaymentIntent, verifyPaymentStatus } from '../utils/stripe.js';
 
 export const placeOrder = async (req, res) => {
@@ -719,7 +719,7 @@ export const initiateStripePayment = async (req, res) => {
 
     const paymentResult = await createPaymentIntent({
       amount: amountInSmallestUnit,
-      currency: 'pkr', // Change to 'usd' if needed
+      currency: 'pkr', 
       customerEmail: user.email,
       customerName: user.fullName || user.name || user.email,
       orderId: newOrder._id.toString()
@@ -827,6 +827,31 @@ export const confirmStripePayment = async (req, res) => {
           });
         }
       });
+    }
+
+    // Send payment confirmation email to customer
+    try {
+      // Collect all items from all shop orders
+      const allItems = order.shopOrders.flatMap(shopOrder =>
+        shopOrder.shopOrderItems.map(item => ({
+          name: item.item?.name || item.name || 'Item',
+          quantity: item.quantity,
+          price: (item.price * item.quantity).toFixed(2)
+        }))
+      );
+
+      await sendPaymentConfirmationMail({
+        to: order.user.email,
+        orderId: order._id.toString(),
+        amount: order.totalAmount.toFixed(2),
+        customerName: order.user.fullName || 'Customer',
+        items: allItems
+      });
+
+      console.log('✓ Payment confirmation email sent to:', order.user.email);
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      // Don't fail the payment process if email fails
     }
 
     return res.status(200).json({

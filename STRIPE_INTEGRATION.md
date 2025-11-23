@@ -16,7 +16,7 @@ Complete Stripe payment gateway integration for FoodVerse application with secur
 
 ---
 
-## Stripe Test Credentials
+## Stripe Test Credential
 
 ### API Keys
 - **Publishable Key**: `pk_test_xxxxxxxxxxxxxxxxxxxxx` (stored in `.env`)
