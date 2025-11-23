@@ -20,6 +20,7 @@ import CheckOut from "./pages/CheckOut";
 import OrderPlaced from "./pages/OrderPlaced";
 import MyOrders from "./pages/MyOrders";
 import useUpdateLocation from "./hooks/useUpdateLocation";
+import useSocket from "./hooks/useSocket";
 import TrackOrderPage from "./pages/TrackOrderPage.jsx";
 import Shop from "./pages/Shop.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
@@ -35,6 +36,7 @@ function App() {
   const dispatch = useDispatch();
   
   useGetCurrentUser();
+  useSocket();
   useUpdateLocation();
   useGetCity();
   useGetMyShop();

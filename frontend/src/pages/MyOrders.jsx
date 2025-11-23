@@ -19,23 +19,29 @@ function MyOrders() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    socket?.on("newOrder", (data) => {
+    if (!socket) return;
+
+    const handleNewOrder = (data) => {
       if (data.shopOrder.owner._id === userData._id) {
         dispatch(setMyOrders([data, ...myOrders]));
       }
-    });
+    };
 
-    socket?.on("update-status", ({ orderId, shopId, status, userId }) => {
+    const handleUpdateStatus = ({ orderId, shopId, status, userId }) => {
+      console.log('[MyOrders] Received update-status event:', { orderId, shopId, status, userId });
       if (userId === userData._id) {
         dispatch(updateRealTimeOrderStatus({ orderId, shopId, status }));
       }
-    });
+    };
+
+    socket.on("newOrder", handleNewOrder);
+    socket.on("update-status", handleUpdateStatus);
 
     return () => {
-      socket?.off("newOrder");
-      socket?.off("update-status");
+      socket.off("newOrder", handleNewOrder);
+      socket.off("update-status", handleUpdateStatus);
     };
-  }, [socket, myOrders, userData, dispatch]);
+  }, [socket, userData._id, myOrders, dispatch]);
 
   // Filter orders based on status and search
   const normalizedFilter = filterStatus?.toLowerCase()?.trim();

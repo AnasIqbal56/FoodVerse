@@ -154,7 +154,10 @@ const userSlice = createSlice({
     // find the order by orderId
     const order = state.myOrders.find(o => o._id === orderId);
     if (order) {
-        const shopOrder = order.shopOrders.find(so => so.shop._id === shopId);
+        const shopOrder = order.shopOrders.find(so => {
+          const shopIdStr = typeof so.shop === 'object' ? so.shop._id : so.shop;
+          return shopIdStr.toString() === shopId.toString();
+        });
         if (shopOrder) {
             shopOrder.status = status;
         }
@@ -166,7 +169,10 @@ const userSlice = createSlice({
     const { orderId, shopId, status } = action.payload;
     const order = state.myOrders.find(o => o._id === orderId);
     if (order) {
-        const shopOrder = order.shopOrders.find(so => so.shop._id === shopId);
+        const shopOrder = order.shopOrders.find(so => {
+          const shopIdStr = typeof so.shop === 'object' ? so.shop._id : so.shop;
+          return shopIdStr.toString() === shopId.toString();
+        });
         if (shopOrder) {
             shopOrder.status = status;
         }
