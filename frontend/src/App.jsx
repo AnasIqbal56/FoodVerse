@@ -28,7 +28,6 @@ import RecommendationsPage from "./pages/RecommendationsPage.jsx";
 import ItemDetails from "./pages/ItemDetails.jsx";
 
 // export const serverUrl =  "https://foodverse-59g3.onrender.com";
-// export const serverUrl = "https://tamera-axenic-matteo.ngrok-free.dev"
 
 export const serverUrl =  "http://localhost:8000";
 
