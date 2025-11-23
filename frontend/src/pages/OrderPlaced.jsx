@@ -15,38 +15,14 @@ function OrderPlaced() {
 
     useEffect(() => {
         const verifyPayment = async () => {
-            const pendingOrderId = localStorage.getItem('pendingOrderId');
             const orderPlaced = localStorage.getItem('orderPlaced');
             
-            if (orderPlaced === 'cod') {
-                // COD order - no verification needed
+            if (orderPlaced === 'cod' || orderPlaced === 'online') {
+                // Order successfully placed (either COD or online payment already confirmed)
                 setPaymentStatus('success');
                 dispatch(clearCart());
                 localStorage.removeItem('orderPlaced');
-            } else if (pendingOrderId) {
-                try {
-                    // Verify payment status from backend
-                    const result = await axios.get(
-                        `${serverUrl}/api/order/verify-payment/${pendingOrderId}`,
-                        { withCredentials: true }
-                    );
-                    
-                    if (result.data.paymentStatus === 'paid') {
-                        setPaymentStatus('success');
-                        setOrderDetails(result.data.order);
-                        dispatch(addMyOrder(result.data.order));
-                        dispatch(clearCart());
-                        localStorage.removeItem('pendingOrderId');
-                    } else if (result.data.paymentStatus === 'failed') {
-                        setPaymentStatus('failed');
-                    } else {
-                        // Still pending, poll for status
-                        setTimeout(verifyPayment, 2000);
-                    }
-                } catch (error) {
-                    console.error('Payment verification error:', error);
-                    setPaymentStatus('failed');
-                }
+                localStorage.removeItem('pendingOrderId');
             } else {
                 // No order info found - redirect to home
                 navigate('/home');

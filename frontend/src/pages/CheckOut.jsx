@@ -12,8 +12,11 @@ import { MdDeliveryDining } from "react-icons/md";
 import { FaMobileButton } from "react-icons/fa6";
 import { FaCreditCard } from "react-icons/fa";
 import { serverUrl } from '../App';
-import { addMyOrder } from '../redux/userSlice';
+import { addMyOrder, clearCart } from '../redux/userSlice';
 import bgImage from '../assets/generated-image.png';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import StripePaymentForm from '../components/StripePaymentForm';
 
 
 function ReCenterMap({ location }) {
@@ -33,6 +36,10 @@ function CheckOut() {
   const { cartItems,totalAmount, userData } = useSelector((state) => state.user);
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showStripeForm, setShowStripeForm] = useState(false);
+  const [stripePromise, setStripePromise] = useState(null);
+  const [clientSecret, setClientSecret] = useState(null);
+  const [currentOrderId, setCurrentOrderId] = useState(null);
   const deliveryFee= totalAmount>500?0:40;
   const AmountWithDeliveryFee=totalAmount+deliveryFee;
   ///
@@ -108,11 +115,12 @@ function CheckOut() {
         }, { withCredentials: true });
         
         dispatch(addMyOrder(result.data));
-        localStorage.setItem('orderPlaced', 'cod'); // Mark as COD order
+        dispatch(clearCart());
+        localStorage.setItem('orderPlaced', 'cod');
         navigate("/order-placed");
       } else if (paymentMethod === 'online') {
-        // Initiate PayFast payment
-        const result = await axios.post(`${serverUrl}/api/order/initiate-payfast-payment`, {
+        // Initiate Stripe payment
+        const result = await axios.post(`${serverUrl}/api/order/initiate-stripe-payment`, {
           deliveryAddress: {
             text: addressInput,
             latitude: location.lat,
@@ -123,26 +131,12 @@ function CheckOut() {
         }, { withCredentials: true });
 
         if (result.data.success) {
-          // Store order ID for verification after return
-          localStorage.setItem('pendingOrderId', result.data.orderId);
-          
-          // Create form and submit to PayFast
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = result.data.paymentUrl;
-          
-          // Add all form fields
-          Object.keys(result.data.formData).forEach(key => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = key;
-            input.value = result.data.formData[key];
-            form.appendChild(input);
-          });
-          
-          document.body.appendChild(form);
-          console.log('Redirecting to PayFast:', result.data.paymentUrl);
-          form.submit();
+          // Load Stripe with publishable key
+          const stripe = await loadStripe(result.data.publishableKey);
+          setStripePromise(stripe);
+          setClientSecret(result.data.clientSecret);
+          setCurrentOrderId(result.data.orderId);
+          setShowStripeForm(true);
         } else {
           alert('Failed to initiate payment. Please try again.');
         }
@@ -163,6 +157,39 @@ function CheckOut() {
       setIsProcessing(false);
     }
   }
+
+  const handleStripePaymentSuccess = async (paymentIntent) => {
+    try {
+      setIsProcessing(true);
+      
+      // Confirm payment with backend
+      const result = await axios.post(
+        `${serverUrl}/api/order/confirm-stripe-payment/${currentOrderId}`,
+        { paymentIntentId: paymentIntent.id },
+        { withCredentials: true }
+      );
+
+      if (result.data.success) {
+        dispatch(addMyOrder(result.data.order));
+        dispatch(clearCart());
+        localStorage.setItem('orderPlaced', 'online');
+        navigate("/order-placed");
+      } else {
+        alert('Payment confirmation failed. Please contact support.');
+      }
+    } catch (error) {
+      console.error('Payment confirmation error:', error);
+      alert('Failed to confirm payment. Please contact support with your payment ID: ' + paymentIntent.id);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleStripePaymentError = (error) => {
+    console.error('Stripe payment error:', error);
+    alert('Payment failed: ' + (error.message || 'Unknown error'));
+    setIsProcessing(false);
+  };
 
   useEffect(() => {
     setAddressInput(address);
@@ -304,23 +331,39 @@ function CheckOut() {
           </div>
         </section>
 
-        <button 
-          className='w-full bg-[#ff4d2d] hover:bg-[#e64526] text-white py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed' 
-          onClick={handlePlaceOrder}
-          disabled={isProcessing}
-        >
-          {isProcessing ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              Processing...
-            </span>
-          ) : (
-            paymentMethod === 'cod' ? 'Place Order' : 'Pay & Place Order'
-          )}
-        </button>
+        {/* Stripe Payment Form */}
+        {showStripeForm && clientSecret && stripePromise && (
+          <section className="border-2 border-orange-200 rounded-xl p-6 bg-orange-50">
+            <h2 className='text-lg font-semibold mb-4 text-gray-800'>Complete Payment</h2>
+            <Elements stripe={stripePromise} options={{ clientSecret }}>
+              <StripePaymentForm
+                orderId={currentOrderId}
+                onSuccess={handleStripePaymentSuccess}
+                onError={handleStripePaymentError}
+              />
+            </Elements>
+          </section>
+        )}
+
+        {!showStripeForm && (
+          <button 
+            className='w-full bg-[#ff4d2d] hover:bg-[#e64526] text-white py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed' 
+            onClick={handlePlaceOrder}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Processing...
+              </span>
+            ) : (
+              paymentMethod === 'cod' ? 'Place Order' : 'Continue to Payment'
+            )}
+          </button>
+        )}
 
 
       </div>

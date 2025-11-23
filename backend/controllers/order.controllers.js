@@ -3,8 +3,8 @@ import Shop from '../models/shop.model.js';
 import User from '../models/user.model.js';
 import DeliveryAssignment from '../models/deliveryAssignment.model.js';
 import mongoose from 'mongoose';
-import { sendDeliveryOtpMail, sendPaymentConfirmationMail } from '../utils/mail.js';
-import { createPayFastPayment } from '../utils/payfast.js';
+import { sendDeliveryOtpMail } from '../utils/mail.js';
+import { createPaymentIntent, verifyPaymentStatus } from '../utils/stripe.js';
 
 export const placeOrder = async (req, res) => {
   try {
@@ -615,27 +615,27 @@ export const verifyDeliveryOtp = async (req, res) => {
   }
 }
 
-// PayFast Payment Functions
-export const initiatePayFastPayment = async (req, res) => {
+// Stripe Payment Functions
+export const initiateStripePayment = async (req, res) => {
   try {
     const { cartItems, deliveryAddress, totalAmount } = req.body;
 
-    // Basic validation
+    // Validation
     if (!cartItems || cartItems.length === 0) {
       return res.status(400).json({ message: 'Cart is empty' });
     }
     if (!deliveryAddress?.text || !deliveryAddress?.latitude || !deliveryAddress?.longitude) {
       return res.status(400).json({ message: 'Send Complete Delivery Address' });
     }
-    if (!totalAmount || totalAmount < 5) {
-      return res.status(400).json({ message: 'Minimum payment amount is R5.00' });
+    if (!totalAmount || totalAmount <= 0) {
+      return res.status(400).json({ message: 'Invalid amount' });
     }
 
     // Get user
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Group items by shop (reuse logic from placeOrder)
+    // Group items by shop
     const groupItemsByShop = {};
     cartItems.forEach(item => {
       const shopId = item.shopId || (item.shop && (item.shop._id || item.shop));
@@ -677,44 +677,53 @@ export const initiatePayFastPayment = async (req, res) => {
       payment: { status: 'pending' }
     });
 
-    // Build PayFast payment
-    const paymentResult = await createPayFastPayment({
-      orderId: newOrder._id.toString(),
-      amount: totalAmount,
+    // Create Stripe Payment Intent
+    // Convert to smallest currency unit (paisa for PKR, cents for USD)
+    const amountInSmallestUnit = Math.round(totalAmount * 100);
+
+    const paymentResult = await createPaymentIntent({
+      amount: amountInSmallestUnit,
+      currency: 'pkr', // Change to 'usd' if needed
       customerEmail: user.email,
       customerName: user.fullName || user.name || user.email,
-      customerPhone: user.mobile || ''
+      orderId: newOrder._id.toString()
     });
 
     if (!paymentResult.success) {
-      // remove order if payment creation failed
+      // Remove order if payment creation failed
       await Order.findByIdAndDelete(newOrder._id);
-      console.error('PayFast payment creation failed:', paymentResult.error);
-      return res.status(400).json({ message: 'Failed to create payment', error: paymentResult.error });
+      console.error('Stripe payment intent creation failed:', paymentResult.error);
+      return res.status(400).json({ 
+        message: 'Failed to create payment', 
+        error: paymentResult.error 
+      });
     }
 
-    // Update order with payfast reference
-    newOrder.payment.payFastOrderId = newOrder._id.toString();
+    // Update order with Stripe payment intent ID
+    newOrder.payment.transactionId = paymentResult.paymentIntentId;
     await newOrder.save();
 
     return res.status(200).json({
       success: true,
-      paymentUrl: paymentResult.paymentUrl,
-      formData: paymentResult.formData,
-      orderId: newOrder._id.toString()
+      clientSecret: paymentResult.clientSecret,
+      orderId: newOrder._id.toString(),
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY
     });
 
   } catch (error) {
-    console.error('Initiate PayFast payment error:', error);
-    return res.status(500).json({ message: `Payment initiation error: ${error.message}` });
+    console.error('Initiate Stripe payment error:', error);
+    return res.status(500).json({ 
+      message: `Payment initiation error: ${error.message}` 
+    });
   }
 };
 
-export const verifyPayFastPayment = async (req, res) => {
+export const confirmStripePayment = async (req, res) => {
   try {
     const { orderId } = req.params;
-    
-    console.log('Verifying payment for order:', orderId);
+    const { paymentIntentId } = req.body;
+
+    console.log('Confirming Stripe payment for order:', orderId);
 
     const order = await Order.findById(orderId)
       .populate("shopOrders.shop", "name")
@@ -733,27 +742,37 @@ export const verifyPayFastPayment = async (req, res) => {
 
     // Check if payment is already processed
     if (order.payment.status === 'paid') {
-      console.log('Payment already verified for order:', orderId);
+      console.log('Payment already confirmed for order:', orderId);
       return res.status(200).json({
         success: true,
-        message: "Payment already verified",
-        order: order,
-        paymentStatus: 'paid'
+        message: "Payment already confirmed",
+        order: order
+      });
+    }
+
+    // Verify payment with Stripe
+    const isPaymentSuccessful = await verifyPaymentStatus(paymentIntentId);
+
+    if (!isPaymentSuccessful) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Payment verification failed" 
       });
     }
 
     // Update payment status to paid
     order.payment.status = 'paid';
     order.payment.paidAt = new Date();
-    
+    order.payment.transactionId = paymentIntentId;
+
     // Update shop orders status
     order.shopOrders.forEach(shopOrder => {
       shopOrder.status = 'pending';
     });
-    
+
     await order.save();
 
-    console.log('Payment marked as paid for order:', orderId);
+    console.log('Payment confirmed and order updated:', orderId);
 
     // Send real-time notifications to shop owners
     const io = req.app.get('io');
@@ -774,85 +793,16 @@ export const verifyPayFastPayment = async (req, res) => {
       });
     }
 
-    // Send payment confirmation email to customer
-    try {
-      const allItems = order.shopOrders.flatMap(shopOrder =>
-        shopOrder.shopOrderItems.map(item => ({
-          name: item.name || 'Item',
-          quantity: item.quantity,
-          price: (item.price * item.quantity).toFixed(2)
-        }))
-      );
-
-      await sendPaymentConfirmationMail({
-        to: order.user.email,
-        orderId: order._id.toString(),
-        amount: order.totalAmount.toFixed(2),
-        customerName: order.user.fullName || 'Customer',
-        items: allItems
-      });
-
-      console.log('✓ Payment confirmation email sent to:', order.user.email);
-    } catch (emailError) {
-      console.error('Email sending error:', emailError);
-      // Don't fail the payment process if email fails
-    }
-
     return res.status(200).json({
       success: true,
-      message: "Payment verified successfully",
-      order: order,
-      paymentStatus: 'paid'
-    });
-
-  } catch (error) {
-    console.error('Verify PayFast payment error:', error);
-    return res.status(500).json({ message: `Payment verification error: ${error.message}` });
-  }
-};
-
-export const handlePayFastWebhook = async (req, res) => {
-  try {
-    console.log('PayFast webhook received:', req.body);
-    // PayFast ITN (Instant Transaction Notification) webhook handler
-    return res.status(200).json({ message: "Webhook received" });
-  } catch (error) {
-    console.error('PayFast webhook error:', error);
-    return res.status(500).json({ message: `Webhook processing error: ${error.message}` });
-  }
-};
-
-// Verify payment status (for frontend to check)
-export const verifyPaymentStatus = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-
-    const order = await Order.findById(orderId)
-      .populate("shopOrders.shop", "name")
-      .populate("shopOrders.shopOrderItems.item", "name image price")
-      .populate("user", "name email");
-
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-
-    // Check if user is authorized to view this order
-    if (order.user._id.toString() !== req.userId) {
-      return res.status(403).json({ message: "Unauthorized" });
-    }
-
-    return res.status(200).json({
-      orderId: order._id,
-      paymentStatus: order.payment.status,
-      paidAt: order.payment.paidAt,
-      totalAmount: order.totalAmount,
+      message: "Payment confirmed successfully",
       order: order
     });
 
   } catch (error) {
-    console.error('Verify payment status error:', error);
+    console.error('Confirm Stripe payment error:', error);
     return res.status(500).json({ 
-      message: `Payment verification error: ${error.message}` 
+      message: `Payment confirmation error: ${error.message}` 
     });
   }
 };

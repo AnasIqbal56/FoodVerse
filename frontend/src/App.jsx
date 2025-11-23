@@ -25,9 +25,6 @@ import Shop from "./pages/Shop.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import RecommendationsPage from "./pages/RecommendationsPage.jsx";
 
-import PaymentSuccess from "./pages/PaymentSuccess.jsx";
-import PaymentCancelled from "./pages/PaymentCancelled.jsx";
-
 // export const serverUrl =  "https://foodverse-59g3.onrender.com";
 // export const serverUrl = "https://tamera-axenic-matteo.ngrok-free.dev"
 
@@ -94,14 +91,6 @@ function App() {
       <Route
         path="/checkout"
         element={userData ? <CheckOut /> : <Navigate to="/signin" replace />}
-      />
-      <Route
-        path="/payment-success"
-        element={userData ? <PaymentSuccess /> : <Navigate to="/signin" replace />}
-      />
-      <Route
-        path="/payment-cancelled"
-        element={userData ? <PaymentCancelled /> : <Navigate to="/signin" replace />}
       />
       <Route
         path="/order-placed"

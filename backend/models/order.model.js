@@ -70,8 +70,6 @@ const orderSchema = new mongoose.Schema(
       default: "cod",
     },
     payment: {
-      payFastOrderId: String,      // Our order ID sent to PayFast
-      pfPaymentId: String,         // PayFast's payment ID (pf_payment_id)
       status: {
         type: String,
         enum: ["pending", "paid", "failed"],
