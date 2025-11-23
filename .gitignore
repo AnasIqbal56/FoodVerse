@@ -9,14 +9,7 @@ backend/dist/
 build/
 coverage/
 
-# Environment variables
-frontend/.env
-backend/.env
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+
 
 # Logs
 *.log
