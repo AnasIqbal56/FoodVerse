@@ -507,14 +507,40 @@ export const acceptOrder = async (req, res) => {
     const shopOrder = order.shopOrders.id(assignment.shopOrderId)
     shopOrder.assignedDeliveryBoy = req.userId
     await order.save()
-    // await order.populate('shopOrders.assignedDeliveryBoy')
+    
+    // Get delivery boy details
+    const deliveryBoy = await User.findById(req.userId).select('fullName email mobile');
+    
+    // Emit socket event to the owner
+    const io = req.app.get('io');
+    const owner = await User.findById(shopOrder.owner);
+    if (io && owner?.socketId) {
+      io.to(owner.socketId).emit('deliveryBoyAccepted', {
+        orderId: order._id,
+        shopId: shopOrder.shop,
+        assignmentId: assignment._id,
+        deliveryBoy: {
+          id: req.userId,
+          fullName: deliveryBoy.fullName,
+          mobile: deliveryBoy.mobile,
+          email: deliveryBoy.email
+        }
+      });
+    }
 
-    return res.status(200).json({ message: "order accepted" })
+    return res.status(200).json({ 
+      message: "order accepted",
+      deliveryBoy: {
+        id: req.userId,
+        fullName: deliveryBoy.fullName,
+        mobile: deliveryBoy.mobile
+      }
+    });
 
   } catch (error) {
     return res.status(500).json({ message: `accept order error: ${error}` });
   }
-}
+};
 
 
 export const getCurrentOrder = async (req, res) => {

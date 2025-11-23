@@ -32,9 +32,15 @@ export const assignDeliveryBoy = async (req, res) => {
     shopOrder.assignment = assignment._id;
     await order.save();
 
-    // Emit socket event to delivery boy in real time
+    // Populate delivery boy details
+    await order.populate('shopOrders.assignedDeliveryBoy', 'fullName email mobile');
+
     const io = req.app.get('io');
+    
+    // Get the delivery boy to find their socketId
     const deliveryBoy = await User.findById(deliveryBoyId);
+    
+    // Emit to delivery boy that they've been assigned
     if (io && deliveryBoy?.socketId) {
       io.to(deliveryBoy.socketId).emit('assignedOrder', {
         orderId: order._id,
@@ -42,8 +48,33 @@ export const assignDeliveryBoy = async (req, res) => {
         assignmentId: assignment._id,
       });
     }
+    
+    // Emit to the owner that delivery boy has accepted
+    const owner = await User.findById(shopOrder.owner);
+    if (io && owner?.socketId) {
+      const updatedShopOrder = order.shopOrders.find(so => so._id.equals(shopOrder._id));
+      io.to(owner.socketId).emit('deliveryBoyAccepted', {
+        orderId: order._id,
+        shopId: shopOrder.shop,
+        assignmentId: assignment._id,
+        deliveryBoy: {
+          id: deliveryBoy._id,
+          fullName: deliveryBoy.fullName,
+          mobile: deliveryBoy.mobile,
+          email: deliveryBoy.email
+        }
+      });
+    }
 
-    return res.status(200).json({ message: 'Delivery boy assigned', deliveryBoyId });
+    return res.status(200).json({ 
+      message: 'Delivery boy assigned',
+      deliveryBoyId,
+      deliveryBoy: {
+        id: deliveryBoy._id,
+        fullName: deliveryBoy.fullName,
+        mobile: deliveryBoy.mobile
+      }
+    });
   } catch (error) {
     return res.status(500).json({ message: `Assign delivery boy error: ${error.message}` });
   }
