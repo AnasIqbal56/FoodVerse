@@ -161,6 +161,25 @@ function OwnerOrderCard({ data }) {
                   <div className="flex items-center justify-between bg-white rounded-xl p-3 shadow-sm" key={index}>
                     <span className="font-semibold" style={{ color: '#2C1810' }}>{b.fullName}</span>
                     <span className="text-sm" style={{ color: '#2C1810', opacity: 0.7 }}>{b.mobile}</span>
+                    <button
+                      className="ml-4 px-4 py-2 rounded-lg bg-green-600 text-white font-bold text-xs hover:bg-green-700 transition"
+                      onClick={async () => {
+                        try {
+                          const response = await axios.post(
+                            `${serverUrl}/api/order/assign-delivery-boy/${data._id}/${shopOrder?.shop?._id}`,
+                            { deliveryBoyId: b.id },
+                            { withCredentials: true }
+                          );
+                          // Optionally update UI or refetch order data
+                          setAvailableBoys([]);
+                          alert('Delivery boy assigned!');
+                        } catch (err) {
+                          alert('Failed to assign delivery boy.');
+                        }
+                      }}
+                    >
+                      Assign
+                    </button>
                   </div>
                 ))}
               </div>

@@ -97,17 +97,21 @@ function DeliveryBoy() {
   }; 
 
   useEffect (() => {
-    socket?.on('newAssignment',(data)=>{
+    socket?.on('newAssignment', (data) => {
       if (String(data.sentTo) === String(userData._id)) {
-
-        setAvailableAssignments(prev => [...prev, data])
-
+        setAvailableAssignments(prev => [...prev, data]);
       }
-    })
-
-    return ()=>{
-      socket?.off('newAssignment')
-    }
+    });
+    socket?.on('assignedOrder', (data) => {
+      // Direct assignment by owner, fetch current order
+      getCurrentOrder();
+      // Optionally show notification
+      alert('You have been assigned a new order!');
+    });
+    return () => {
+      socket?.off('newAssignment');
+      socket?.off('assignedOrder');
+    };
   }, [socket]);
 
   useEffect(() => {

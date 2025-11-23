@@ -3,17 +3,28 @@ import Nav from "../components/Nav.jsx";
 import CategoryCard from "./CategoryCard.jsx";
 import { categories } from "../category.js";
 import { FaChevronCircleLeft, FaChevronCircleRight } from "react-icons/fa";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { updateRealTimeOrderStatus } from "../redux/userSlice";
 import FoodCard from "./FoodCard.jsx";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
 import { setSearchItems } from "../redux/userSlice.js";
 import { divIcon } from "leaflet";
 import bgImage from "../assets/generated-image.png";
 
 
 function UserDashboard() {
-  const {currentCity, shopInMyCity,itemsInMyCity,searchItems, userData} = useSelector(state => state.user)
+  const {currentCity, shopInMyCity,itemsInMyCity,searchItems, userData, socket} = useSelector(state => state.user)
+  const dispatch = useDispatch();
+    useEffect(() => {
+      if (!socket) return;
+      const handleStatusUpdate = (data) => {
+        dispatch(updateRealTimeOrderStatus(data));
+      };
+      socket.on('update-status', handleStatusUpdate);
+      return () => {
+        socket.off('update-status', handleStatusUpdate);
+      };
+    }, [socket, dispatch]);
   console.log("Search Items in Dashboard:", searchItems);
   const cateScrollRef = useRef();
   const shopScrollRef = useRef();
@@ -135,7 +146,7 @@ useEffect(() => {
       </div>
 
       <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-[10px]">
-        <h1 className="text-white text-2xl sm:text-3xl font-bold drop-shadow-lg"> Best Shop in {currentCity}</h1>
+        <h1 className="text-white text-2xl sm:text-3xl font-bold drop-shadow-lg"> Best Shop in {currentCity || "Karachi Division"}</h1>
         <div className="w-full relative">
           {showLeftShopButton && (
             <button

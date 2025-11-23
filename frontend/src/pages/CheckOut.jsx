@@ -117,7 +117,7 @@ function CheckOut() {
         dispatch(addMyOrder(result.data));
         dispatch(clearCart());
         localStorage.setItem('orderPlaced', 'cod');
-        navigate("/order-placed");
+        navigate("/my-orders");
       } else if (paymentMethod === 'online') {
         // Initiate Stripe payment
         const result = await axios.post(`${serverUrl}/api/order/initiate-stripe-payment`, {
@@ -173,7 +173,7 @@ function CheckOut() {
         dispatch(addMyOrder(result.data.order));
         dispatch(clearCart());
         localStorage.setItem('orderPlaced', 'online');
-        navigate("/order-placed");
+        navigate("/my-orders");
       } else {
         alert('Payment confirmation failed. Please contact support.');
       }

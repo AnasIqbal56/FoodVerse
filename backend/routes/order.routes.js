@@ -12,9 +12,12 @@ import {
   initiateStripePayment,
   confirmStripePayment,
 } from "../controllers/order.controllers.js";
+import { assignDeliveryBoy } from "../controllers/assignDeliveryBoy.controllers.js";
 import isAuth from "../middlewares/isAuth.js";
 
 const orderRouter = express.Router();
+
+orderRouter.post("/assign-delivery-boy/:orderId/:shopId", isAuth, assignDeliveryBoy);
 
 orderRouter.post("/place-order", isAuth, placeOrder);
 orderRouter.get("/my-orders", isAuth, getMyOrders);

@@ -254,7 +254,9 @@ export const updateOrderStatus = async (req, res) => {
 
     if (status === "out of delivery" && !shopOrder.assignment) {
       const { longitude, latitude } = order.deliveryAddress;
-      const nearByDeliveryBoys = await User.find({
+      console.log(`[updateOrderStatus] Finding delivery boys near ${latitude}, ${longitude}`);
+      
+      let nearByDeliveryBoys = await User.find({
         role: "deliveryBoy",
         location: {
           $near: {
@@ -263,6 +265,18 @@ export const updateOrderStatus = async (req, res) => {
           }
         }
       });
+      
+      console.log(`[updateOrderStatus] Found ${nearByDeliveryBoys.length} delivery boys within 5km`);
+
+      // Fallback: if no boys within 5km, get all online delivery boys
+      if (nearByDeliveryBoys.length === 0) {
+        console.log(`[updateOrderStatus] No delivery boys within 5km, fetching all online delivery boys`);
+        nearByDeliveryBoys = await User.find({
+          role: "deliveryBoy",
+          socketId: { $exists: true, $ne: null }
+        });
+        console.log(`[updateOrderStatus] Found ${nearByDeliveryBoys.length} online delivery boys total`);
+      }
 
       const nearByIds = nearByDeliveryBoys.map(b => b._id);
       const busyIds = await DeliveryAssignment.find({
@@ -273,24 +287,8 @@ export const updateOrderStatus = async (req, res) => {
       const busyIdSet = new Set(busyIds.map(id => String(id)));
       const availableBoys = nearByDeliveryBoys.filter(b => !busyIdSet.has(String(b._id)));
       const candidates = availableBoys.map(b => b._id);
-
-      if (candidates.length === 0) {
-        await order.save();
-        return res.json({
-          message: "Order status updated but there are no available delivery boys"
-        });
-      }
-
-      const deliveryAssignment = await DeliveryAssignment.create({
-        order: order._id,
-        shop: shopOrder.shop,
-        shopOrderId: shopOrder._id,
-        brodcastedTo: candidates,
-        status: "broadcasted"
-      });
-
-      shopOrder.assignedDeliveryBoy = deliveryAssignment.assignedTo || null;
-      shopOrder.assignment = deliveryAssignment._id;
+      
+      console.log(`[updateOrderStatus] Available boys after filtering busy ones: ${candidates.length}`);
 
       deliveryBoysPayload = availableBoys.map(b => ({
         id: b._id,
@@ -300,26 +298,44 @@ export const updateOrderStatus = async (req, res) => {
         mobile: b.mobile
       }));
 
-      await deliveryAssignment.populate("shop", "name");
-
-      const io = req.app.get('io');
-      if (io) {
-        candidates.forEach(boyId => {
-          const boy = nearByDeliveryBoys.find(b => String(b._id) === String(boyId));
-          const boySocketId = boy?.socketId;
-          if (boySocketId) {
-            io.to(boySocketId).emit('newAssignment', {
-              sentTo: boyId.toString(),
-              assignmentId: deliveryAssignment._id,
-              orderId: deliveryAssignment.order._id,
-              shopName: deliveryAssignment.shop.name,
-              deliveryAddress: deliveryAssignment.order.deliveryAddress,
-              items: deliveryAssignment.order.shopOrders.find(so => so._id.equals(deliveryAssignment.shopOrderId))?.shopOrderItems || [],
-              subtotal: deliveryAssignment.order.shopOrders.find(so => so._id.equals(deliveryAssignment.shopOrderId))?.subtotal || 0
-            });
-          }
+      if (candidates.length > 0) {
+        const deliveryAssignment = await DeliveryAssignment.create({
+          order: order._id,
+          shop: shopOrder.shop,
+          shopOrderId: shopOrder._id,
+          brodcastedTo: candidates,
+          status: "broadcasted"
         });
+
+        shopOrder.assignedDeliveryBoy = deliveryAssignment.assignedTo || null;
+        shopOrder.assignment = deliveryAssignment._id;
+
+        await deliveryAssignment.populate("shop", "name");
+
+        const io = req.app.get('io');
+        if (io) {
+          candidates.forEach(boyId => {
+            const boy = nearByDeliveryBoys.find(b => String(b._id) === String(boyId));
+            const boySocketId = boy?.socketId;
+            if (boySocketId) {
+              io.to(boySocketId).emit('newAssignment', {
+                sentTo: boyId.toString(),
+                assignmentId: deliveryAssignment._id,
+                orderId: deliveryAssignment.order._id,
+                shopName: deliveryAssignment.shop.name,
+                deliveryAddress: deliveryAssignment.order.deliveryAddress,
+                items: Array.isArray(deliveryAssignment.order.shopOrders)
+                  ? (deliveryAssignment.order.shopOrders.find(so => so._id.equals(deliveryAssignment.shopOrderId))?.shopOrderItems || [])
+                  : [],
+                subtotal: Array.isArray(deliveryAssignment.order.shopOrders)
+                  ? (deliveryAssignment.order.shopOrders.find(so => so._id.equals(deliveryAssignment.shopOrderId))?.subtotal || 0)
+                  : 0
+              });
+            }
+          });
+        }
       }
+      // If no candidates, just proceed and return empty availableBoys
     }
 
     await order.save();
@@ -357,25 +373,45 @@ export const updateOrderStatus = async (req, res) => {
 export const getDeliveryBoyAssignment = async (req, res) => {
   try {
     const deliveryBoyId = req.userId;
+    console.log(`[getDeliveryBoyAssignment] Fetching assignments for delivery boy: ${deliveryBoyId}`);
+    
     const assignment = await DeliveryAssignment.find({
-      brodcastedTo: deliveryBoyId,
+      brodcastedTo: { $in: [deliveryBoyId] },
       status: "broadcasted"
     })
       .populate("order")
       .populate("shop");
 
-    const formatted = assignment.map(a => ({
-      assignmentId: a._id,
-      orderId: a.order._id,
-      shopName: a.shop.name,
-      deliveryAddress: a.order.deliveryAddress,
-      items:
-        a.order.shopOrders.find(so => so._id.equals(a.shopOrderId)).shopOrderItems ||
-        [],
-      subtotal:
-        a.order.shopOrders.find(so => so._id.equals(a.shopOrderId)).subtotal || 0
-    }));
+    console.log(`[getDeliveryBoyAssignment] Found ${assignment.length} total assignments`);
 
+    // Filter out assignments where order was deleted
+    const validAssignments = assignment.filter(a => a.order !== null && a.shop !== null);
+
+    console.log(`[getDeliveryBoyAssignment] Found ${validAssignments.length} valid assignments after filtering nulls`);
+
+    const formatted = validAssignments.map(a => {
+      let items = [];
+      let subtotal = 0;
+      
+      if (a.order && Array.isArray(a.order.shopOrders)) {
+        const shopOrder = a.order.shopOrders.find(so => so._id.equals(a.shopOrderId));
+        if (shopOrder) {
+          items = shopOrder.shopOrderItems || [];
+          subtotal = shopOrder.subtotal || 0;
+        }
+      }
+      
+      return {
+        assignmentId: a._id,
+        orderId: a.order._id,
+        shopName: a.shop.name,
+        deliveryAddress: a.order.deliveryAddress,
+        items,
+        subtotal
+      };
+    });
+
+    console.log(`[getDeliveryBoyAssignment] Returning ${formatted.length} formatted assignments`);
     return res.status(200).json(formatted);
   } catch (error) {
     console.error("getDeliveryBoyAssignment error", error);
