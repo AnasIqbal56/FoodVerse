@@ -15,6 +15,10 @@ import bgImage from "../assets/generated-image.png";
 function UserDashboard() {
   const {currentCity, shopInMyCity,itemsInMyCity,searchItems, userData, socket} = useSelector(state => state.user)
   const dispatch = useDispatch();
+  
+  const clearSearch = () => {
+    dispatch(setSearchItems(null));
+  };
     useEffect(() => {
       if (!socket) return;
       const handleStatusUpdate = (data) => {
@@ -96,18 +100,24 @@ useEffect(() => {
   return (
     <div className="w-screen min-h-screen flex flex-col gap-5 items-center overflow-y-auto" style={{ backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.75), rgba(0,0,0,0.75)), url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}>
       <Nav />
-{searchItems && searchItems.length>0 && (
+{searchItems && Array.isArray(searchItems) && searchItems.length > 0 && (
   <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-5 bg-white/95 backdrop-blur-lg rounded-2xl shadow-md mt-4">
-      <h1 className="text-gray-800 text-2xl sm:text-3xl font-semibold border-b-2 pb-2 border-gray">
-          Search Results
+      <div className="w-full flex justify-between items-center border-b-2 pb-2 border-gray-300">
+        <h1 className="text-gray-800 text-2xl sm:text-3xl font-semibold">
+          Search Results ({searchItems.length})
         </h1>
+        <button 
+          onClick={clearSearch}
+          className="text-gray-600 hover:text-red-600 font-bold text-xl px-3 py-1 rounded-lg hover:bg-gray-100"
+        >
+          ✕
+        </button>
+      </div>
         <div className="w-full h-auto flex flex-wrap gap-[20px] justify-center">
           {searchItems.map((item) => (
             <FoodCard data={item} key={item._id} />
-
           ))}
         </div>
-    
     </div>
     )}
 

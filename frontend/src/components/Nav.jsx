@@ -69,23 +69,23 @@ function Nav() {
         const result = await axios.get(
           `${serverUrl}/api/item/search-items?query=${query}&city=${currentCity}`,
           {withCredentials:true});  
-          dispatch(setSearchItems(result.data.items || []));
+          dispatch(setSearchItems(result.data || []));
    
     } catch (error) {
         console.log(error)
-        
+        dispatch(setSearchItems([]))
       }
   
       
     }
 
     useEffect(() => {
-      if(query){
+      if(query && query.trim()){
       handleSearchItems()}
       else{
         dispatch(setSearchItems(null))
       }
-    },[query])
+    },[query, currentCity])
   return (
     <div
       className="w-full h-[80px] flex items-center justify-between md:justify-center
@@ -138,7 +138,10 @@ function Nav() {
             <input
               type="text"
               placeholder="Search Delicious Food"
-              className="px-[10px] text-gray-700 outline-0 w-full"       />
+              className="px-[10px] text-gray-700 outline-0 w-full"
+              onChange={(e) => setQuery(e.target.value)}
+              value={query}
+            />
           </div>
         </div>
       )}
