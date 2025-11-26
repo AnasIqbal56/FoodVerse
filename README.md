@@ -576,7 +576,7 @@ components/
 - GitHub: [@Sawera-11](https://github.com/SAWERA-11)
 
 **Affan Ahmed**
-GitHub: [@affan-ak-khan](https://github.com/affan-ak-khan)
+- GitHub: [@affan-ak-khan](https://github.com/affan-ak-khan)
 
 **Noor Afza**
 - GitHub: [@Afza75](https://github.com/Afza75)
