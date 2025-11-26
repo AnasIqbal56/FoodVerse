@@ -571,12 +571,15 @@ components/
 
 **Anas Iqbal**
 - GitHub: [@AnasIqbal56](https://github.com/AnasIqbal56)
+
 **Sawera Arif**
 - GitHub: [@Sawera-11](https://github.com/SAWERA-11)
+
 **Affan Ahmed**
 GitHub: [@affan-ak-khan](https://github.com/affan-ak-khan)
+
 **Noor Afza**
-GitHub: [@Afza75](https://github.com/Afza75)
+- GitHub: [@Afza75](https://github.com/Afza75)
 ---
 
 ## 🎓 Learning Resources
