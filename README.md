@@ -192,7 +192,6 @@ npm install
 
 #### 3.3 Create `.env` File
 Create a `.env` file in the `frontend` folder:
-
 ```dotenv
 # Firebase Configuration
 VITE_FIREBASE_API_KEY="your_firebase_api_key"
@@ -201,6 +200,7 @@ VITE_FIREBASE_API_KEY="your_firebase_api_key"
 VITE_GEOAPIKEY="your_locationiq_api_key"
 ```
 
+Already exists in the folder no need to create
 #### 3.4 Get Your API Keys
 
 **Firebase:**
@@ -225,26 +225,22 @@ export const serverUrl = "http://localhost:8000"; // for local development
 # Development mode
 npm run dev
 
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
 ```
 
 Frontend will run on `http://localhost:5173`
-
+Make sure your port no 8000 and 5173 are free to use by the application
 ---
 ---
 
 ## ▶️ Running the Application
 
 ### Full Setup (Both Servers)
-
+# make sure your connection is stable if not installation might be interrupted 
+# In case of interruption again install packages by npm install # If it throws errors multiple times delete te package.json file in respective folder and again install by npm install
 **Terminal 1 - Backend:**
 ```bash
 cd backend
-npm install  # if not already done
+npm install  
 npm run dev
 ```
 
