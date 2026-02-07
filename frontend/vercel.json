@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/:path*", "destination": "https://foodverse-59g3.onrender.com/api/:path*" },
     { "source": "/(.*)", "destination": "/" }
   ]
 }

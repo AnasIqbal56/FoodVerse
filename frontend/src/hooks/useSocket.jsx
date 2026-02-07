@@ -2,7 +2,9 @@ import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { io } from 'socket.io-client';
 import { setSocket } from '../redux/userSlice';
-import { serverUrl } from '../App';
+
+// Socket needs full URL (can't use relative URLs for websockets)
+const socketUrl = "https://foodverse-59g3.onrender.com";
 
 function useSocket() {
   const dispatch = useDispatch();
@@ -17,7 +19,7 @@ function useSocket() {
     console.log('Initializing socket connection for user:', userData._id);
 
     // Create socket connection
-    const newSocket = io(serverUrl, {
+    const newSocket = io(socketUrl, {
       withCredentials: true,
       transports: ['websocket', 'polling']
     });
