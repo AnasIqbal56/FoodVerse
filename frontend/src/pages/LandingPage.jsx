@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { serverUrl } from "../App";
 import { Zap, ChefHat, DollarSign, Bike, Search, ShoppingCart, Truck, Mail, Phone, Globe, Award, Clock, Heart, ArrowUp, MessageCircle, Send, Facebook, Instagram, Twitter, Youtube, PartyPopper, Pizza, Utensils, UtensilsCrossed, Target, Lock, Star, MapPin, Package, CheckCircle, Users, X, Menu, Building2, Mountain, Waves, TrendingUp } from "lucide-react";
 import image1 from "../assets/generated-image1.png";
 import image2 from "../assets/generated-image2.png";
@@ -70,7 +71,7 @@ function LandingPage() {
     setSubmitStatus({ type: "", message: "" });
 
     try {
-      const response = await fetch("http://localhost:8000/api/contact/submit", {
+      const response = await fetch(`${serverUrl}/api/contact/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

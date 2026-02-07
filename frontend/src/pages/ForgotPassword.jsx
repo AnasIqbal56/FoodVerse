@@ -1,6 +1,6 @@
 import React from "react";
 import axios from "axios";
-const serverUrl = "http://localhost:8000";
+import { serverUrl } from "../App";
 
 import { useState } from "react";
 import { IoArrowBack } from "react-icons/io5";

@@ -6,6 +6,7 @@ import axios from "axios";
 import { motion } from "framer-motion";
 import { FaTruck, FaMapMarkerAlt, FaBox, FaClock } from "react-icons/fa";
 import bgImage from "../assets/generated-image.png";
+import { serverUrl } from "../App";
 
 function DeliveryBoy() {
   const { userData, socket } = useSelector((state) => state.user);
@@ -13,7 +14,6 @@ function DeliveryBoy() {
   const [availableAssignments, setAvailableAssignments] = useState([]);
   const [otp, setOtp] = useState("");
   const [showOTPBox, setShowOTPBox] = useState(false);
-  const serverUrl = "http://localhost:8000";
 
   const getAssignments = async () => {
     try {
