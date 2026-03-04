@@ -22,11 +22,11 @@ const server=http.createServer(app)
 
 const io=new Server(server,{
   cors:{
-  origin: "https://food-verse-one.vercel.app",
-  // [
-  //   "http://localhost:5173",
-  //   "http://localhost:5174"
-  // ],
+  origin: [
+    "https://food-verse-one.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:5174"
+  ],
   credentials: true,
   methods:['POST','GET']
 }
@@ -42,11 +42,11 @@ app.set("io",io)
 
 const port = process.env.PORT || 5000
 app.use(cors({
-  origin: "https://food-verse-one.vercel.app",
-  // [
-  //   "http://localhost:5173",
-  //   "http://localhost:5174"
-  // ],
+  origin: [
+    "https://food-verse-one.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:5174"
+  ],
   credentials: true
 }));
 app.use((req, res, next) => {

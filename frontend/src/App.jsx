@@ -27,10 +27,8 @@ import LandingPage from "./pages/LandingPage.jsx";
 import RecommendationsPage from "./pages/RecommendationsPage.jsx";
 import ItemDetails from "./pages/ItemDetails.jsx";
 
-export const serverUrl = "";
-
 // export const serverUrl =  "https://foodverse-59g3.onrender.com";
-// export const serverUrl =  "http://localhost:8000";
+export const serverUrl =  "http://localhost:8000";
 
 function App() {
   const dispatch = useDispatch();
