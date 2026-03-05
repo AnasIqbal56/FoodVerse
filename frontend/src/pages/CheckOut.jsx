@@ -34,7 +34,7 @@ function CheckOut() {
   const [addressInput, setAddressInput] = useState('');
   const { location, address } = useSelector((state) => state.map);
   const { cartItems,totalAmount, userData } = useSelector((state) => state.user);
-  const [paymentMethod, setPaymentMethod] = useState('cod');
+  const [paymentMethod, setPaymentMethod] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showStripeForm, setShowStripeForm] = useState(false);
   const [stripePromise, setStripePromise] = useState(null);
@@ -96,6 +96,11 @@ function CheckOut() {
     
     if (!cartItems || cartItems.length === 0) {
       alert('Your cart is empty');
+      return;
+    }
+
+    if (!paymentMethod) {
+      alert('Please select a payment method to continue');
       return;
     }
     
@@ -308,7 +313,7 @@ function CheckOut() {
                   <div key={index} className='flex justify-between text-sm text-gray-700'>
 
                     <span>{item.name} x {item.quantity}</span>
-                    <span>RS{item.price*item.quantity}</span>
+                    <span>RS {item.price*item.quantity}</span>
                   
                   </div>
 
@@ -317,11 +322,11 @@ function CheckOut() {
 
                 <div className='flex justify-between font-medium text-gray-800'>
                   <span>Subtotal</span>
-                  <span>{totalAmount}</span>
+                  <span>RS {totalAmount}</span>
                 </div>
                 <div className='flex justify-between text-gray-700'>
                   <span>Delivery Fee</span>
-                  <span>{deliveryFee==0?"Free":deliveryFee}</span>
+                  <span>{deliveryFee==0?"Free":`RS ${deliveryFee}`}</span>
                 </div>
                 <div className='flex justify-between text-lg font-bold text-[#ff4d2d] pt-2'>
                   <span>Total</span>
@@ -360,7 +365,7 @@ function CheckOut() {
                 Processing...
               </span>
             ) : (
-              paymentMethod === 'cod' ? 'Place Order' : 'Continue to Payment'
+              paymentMethod === 'cod' ? 'Place Order' : paymentMethod === 'online' ? 'Continue to Payment' : 'Place Order'
             )}
           </button>
         )}

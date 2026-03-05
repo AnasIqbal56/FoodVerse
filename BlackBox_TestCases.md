@@ -15,9 +15,12 @@
 4. [Feature 3 – Cart Total & Delivery Fee Calculation (BVA)](#4-feature-3--cart-total--delivery-fee-calculation)
 5. [Feature 4 – Personalized Recommendation Engine (Equivalence Partitioning)](#5-feature-4--personalized-recommendation-engine)
 6. [Feature 5 – Dietary Preferences & Allergen Filtering (EP + Decision Table)](#6-feature-5--dietary-preferences--allergen-filtering)
-7. [Technique Comparison & Justification](#7-technique-comparison--justification)
-8. [Testing Level Analysis](#8-testing-level-analysis)
-9. [Feature-wise Test Summary Report](#9-feature-wise-test-summary-report)
+7. [Feature 6 – Owner: Add Food Item (Equivalence Partitioning + BVA)](#7-feature-6--owner-add-food-item)
+8. [Feature 7 – Rider: Accept Order & OTP Delivery Confirmation (BVA + State Transition)](#8-feature-7--rider-accept-order--otp-delivery-confirmation)
+9. [Feature 8 – Payment Process – Stripe Online & COD (EP + Decision Table)](#9-feature-8--payment-process--stripe-online--cod)
+10. [Technique Comparison & Justification](#10-technique-comparison--justification)
+11. [Testing Level Analysis](#11-testing-level-analysis)
+12. [Feature-wise Test Summary Report](#12-feature-wise-test-summary-report)
 
 ---
 
@@ -41,8 +44,8 @@
 When a user clicks "Place Order" in CheckOut.jsx, the system validates:
 - Cart must not be empty
 - Delivery address text must be provided
-- Geographic coordinates (lat/lon) must be present
-- Payment method must be `cod` or `online`
+- Geographic coordinates (lat/lon) must be present — **Note:** coordinates are auto-fetched (via browser Geolocation API or Geoapify reverse-geocoding), but can still be `null` in real scenarios: browser geolocation denied/unavailable, Geoapify API failure (quota exceeded, network error, invalid key), or user landing on checkout without ever triggering a location lookup. The validation guard `if (!location?.lat || !location?.lon)` in `handlePlaceOrder` exists precisely for these cases.
+- Payment method must be `cod` or `online` — **Note (updated):** default is now `""` (none selected); user must explicitly choose, otherwise an alert fires before any API call is made
 
 **Source:** `backend/controllers/order.controllers.js` → `placeOrder()`, `frontend/src/pages/CheckOut.jsx` → `handlePlaceOrder()`
 
@@ -56,7 +59,7 @@ A decision table is used when the output depends on **combinations of conditions
 |-----------|----------|----------|----------|----------|----------|----------|----------|----------|
 | Cart has items? | NO | YES | YES | YES | YES | YES | YES | YES |
 | Address text provided? | – | NO | YES | YES | YES | YES | YES | YES |
-| Coordinates (lat/lon) valid? | – | – | NO | YES | YES | YES | YES | YES |
+| Coordinates (lat/lon) resolved? (auto-fetched; null if geolocation denied / geocoding API fails) | – | – | NO | YES | YES | YES | YES | YES |
 | Payment method valid? | – | – | – | NO | YES (cod) | YES (online) | YES (cod) | YES (online) |
 | Total Amount > 0? | – | – | – | – | NO | NO | YES | YES |
 | **Expected Output** | 400: Cart empty | Alert: No address | Alert: No location | 400: Bad Request | 400: Invalid amount | 400: Invalid amount | **201: Order placed (COD)** | **201: Order placed (Online→Stripe)** |
@@ -67,8 +70,11 @@ A decision table is used when the output depends on **combinations of conditions
 |---|---|---|---|---|
 | TC-OP-01 | Empty cart order attempt | `cartItems: []`, valid address, valid coordinates, `paymentMethod: cod` | "Your cart is empty" alert; order NOT created | 400 |
 | TC-OP-02 | Missing delivery address | 2 cart items, `addressInput: ""`, valid lat/lon, `paymentMethod: cod` | "Please enter a delivery address" alert; order NOT created | 400 |
-| TC-OP-03 | Missing geographic coordinates | 2 cart items, address text present, `lat: null`, `lon: null` | "Please select a valid delivery location" alert | 400 |
-| TC-OP-04 | Invalid payment method | 2 cart items, valid address, valid lat/lon, `paymentMethod: "crypto"` | Order rejected – enum validation error | 500/400 |
+| TC-OP-03 | Coordinates not resolved (auto-fetch failed) | 2 cart items, address typed but **Geoapify geocoding API returned an error** (or browser geolocation denied) so Redux `location` state remains `null`; `lat: null`, `lon: null` | "Please select a valid delivery location on the map" alert; order NOT created | **400** |
+| TC-OP-03a | Geolocation permission denied by browser | 2 cart items, address typed manually, user dismisses browser geolocation prompt → `location` state stays `null` | "Please select a valid delivery location on the map" alert | **400** |
+| TC-OP-03b | Geocoding API quota exceeded | 2 cart items, `addressInput` filled, search button clicked but Geoapify returns 429/error → `location` not updated | "Please select a valid delivery location on the map" alert | **400** |
+| TC-OP-04 | No payment method selected (new default) | 2 cart items, valid address, valid coords, `paymentMethod: ""` (nothing chosen) | "Please select a payment method to continue" alert; order NOT created | **400** |
+| TC-OP-04a | Invalid payment method (direct API call) | 2 cart items, valid address, valid lat/lon, `paymentMethod: "crypto"` sent directly to backend | Order rejected – enum validation error | 500/400 |
 | TC-OP-05 | COD order with zero total | 2 items with price 0, valid address, valid coords, `paymentMethod: cod` | Order rejected – invalid amount | 400 |
 | TC-OP-06 | Online payment with zero total | Same as TC-OP-05 but `paymentMethod: online` | Order rejected – Stripe rejects zero charge | 400 |
 | TC-OP-07 | **Valid COD order (Happy Path)** | `cartItems: [{id, shopId, price: 150, quantity: 2, name}]`, address: "123 Main St", `lat: 28.6139`, `lon: 77.2090`, `paymentMethod: cod`, `totalAmount: 340` | Order created, status "pending", socket notification to shop owner | **201** |
@@ -329,9 +335,367 @@ Users set dietary preferences (veg, vegan, halal, keto, etc.) and allergen lists
 
 ---
 
-## 7. Technique Comparison & Justification
+---
 
-### 7.1 Comparison of Selected Techniques
+## 7. Feature 6 – Owner: Add Food Item
+
+### Feature Description
+Shop owners add menu items through the **Add Food Item** form (`/add-item` → `AddItem.jsx`). A `multipart/form-data` POST request is sent to `POST /api/item/add-item`. The backend:
+1. Requires the owner to have a shop already created (no shop → 400)
+2. Uploads the image to **Cloudinary** (image is required)
+3. Creates an `Item` document in MongoDB linked to the owner's shop
+4. Returns the updated shop object (all items populated)
+
+**Mandatory fields:** `name`, `category` (enum: 12 values), `price` (Number ≥ 0), `foodType` (veg / non veg), `image` (file upload)  
+**Optional fields:** `dietType[]`, `spiceLevel` (low / medium / high, default medium), `allergens[]`, `tags[]`
+
+**Source:** `frontend/src/pages/AddItem.jsx`, `backend/controllers/item.controllers.js` → `addItem()`, `backend/models/item.model.js`
+
+### Technique: Equivalence Partitioning + Boundary Value Analysis
+
+**EP** partitions the large categorical input fields (12 categories, 19 diet types, 17 allergens, 11 tags) into valid/invalid classes, and partitions the mandatory-vs-optional field presence. **BVA** targets the `price` field which has a defined minimum (`min: 0` in schema) and realistic upper bounds, and the `name` field length.
+
+---
+
+#### EP – Input Field Equivalence Classes
+
+**EP Dimension 1 – Item Name**
+
+| Class ID | Partition | Representative Value | Valid? |
+|---|---|---|---|
+| EP-AI-N1 | Non-empty string (normal) | `"Chicken Biryani"` | ✅ Valid |
+| EP-AI-N2 | Empty string | `""` | ❌ Invalid (required) |
+| EP-AI-N3 | Whitespace only | `"   "` | ❌ Invalid |
+| EP-AI-N4 | Very long name (100+ chars) | 110-char string | ❌ / depends on schema |
+| EP-AI-N5 | Special characters | `"Biryani <$#>"` | ✅ Accepted (no format constraint) |
+
+**EP Dimension 2 – Category**
+
+| Class ID | Partition | Representative Value | Valid? |
+|---|---|---|---|
+| EP-AI-C1 | Valid enum value | `"Pizza"` | ✅ Valid |
+| EP-AI-C2 | Valid enum value (boundary of list) | `"Others"` | ✅ Valid |
+| EP-AI-C3 | Invalid / not in enum | `"Sushi"` | ❌ Invalid – schema enum error |
+| EP-AI-C4 | Empty / not selected | `""` | ❌ Invalid (required) |
+
+**EP Dimension 3 – Food Type**
+
+| Class ID | Partition | Value | Valid? |
+|---|---|---|---|
+| EP-AI-FT1 | Valid enum | `"veg"` | ✅ |
+| EP-AI-FT2 | Valid enum | `"non veg"` | ✅ |
+| EP-AI-FT3 | Invalid string | `"both"` | ❌ |
+| EP-AI-FT4 | Missing field | *(omitted)* | ❌ (required) |
+
+**EP Dimension 4 – Diet Type (multi-select, optional)**
+
+| Class ID | Partition | Value | Valid? |
+|---|---|---|---|
+| EP-AI-DT1 | Empty array (no selection) | `[]` | ✅ (optional) |
+| EP-AI-DT2 | Single valid diet type | `["keto"]` | ✅ |
+| EP-AI-DT3 | Multiple valid diet types | `["vegan", "gluten-free", "low-fat"]` | ✅ |
+| EP-AI-DT4 | One invalid diet type in array | `["keto", "carnivore"]` | ❌ – schema rejects "carnivore" |
+| EP-AI-DT5 | All valid (maximum selection) | All 19 diet types | ✅ Edge case |
+
+**EP Dimension 5 – Image Upload**
+
+| Class ID | Partition | Value | Valid? |
+|---|---|---|---|
+| EP-AI-IMG1 | Valid image file (JPEG) | `burger.jpg` (< 5 MB) | ✅ |
+| EP-AI-IMG2 | Valid image file (PNG) | `pizza.png` | ✅ |
+| EP-AI-IMG3 | No file uploaded | *(omitted)* | ❌ – `image` required in schema |
+| EP-AI-IMG4 | Non-image file | `menu.pdf` | ❌ – Cloudinary/multer rejects |
+| EP-AI-IMG5 | Very large file (> 10 MB) | `large.jpg` | ❌ – multer size limit |
+
+**EP Dimension 6 – Owner's Shop Existence**
+
+| Class ID | Partition | State | Valid? |
+|---|---|---|---|
+| EP-AI-SH1 | Owner has a shop | Shop document exists in DB | ✅ |
+| EP-AI-SH2 | Owner has NO shop | No Shop with `owner: userId` | ❌ – "Shop not found. Create shop first." |
+
+---
+
+#### BVA – Price Field
+
+The `Item` model defines `price: { type: Number, min: 0, required: true }`.
+
+| Variable | Below Min | At Min | Min+1 | Nominal | Large Value | Negative |
+|---|---|---|---|---|---|---|
+| `price` | –1 | **0** | 1 | 150 | 99,999 | –100 |
+
+| Test Case ID | price Value | Expected Result | HTTP |
+|---|---|---|---|
+| TC-AI-PR-01 | **–1** (below min) | Schema validation error: "price must be ≥ 0" | **400/500** |
+| TC-AI-PR-02 | **0** (at minimum) | ✅ Item created with price ₹0 | **201** |
+| TC-AI-PR-03 | **1** (min + 1) | ✅ Item created | **201** |
+| TC-AI-PR-04 | **150** (nominal) | ✅ Item created | **201** |
+| TC-AI-PR-05 | **99,999** (large valid) | ✅ Item created | **201** |
+| TC-AI-PR-06 | **"abc"** (non-numeric) | Cast error / validation failure | **400/500** |
+| TC-AI-PR-07 | *(omitted / null)* | "price is required" | **400** |
+| TC-AI-PR-08 | **0.5** (decimal price) | ✅ Item created (schema allows decimals) | **201** |
+
+---
+
+#### EP Full Test Cases
+
+| Test Case ID | name | category | price | foodType | image | dietType | Owner has shop? | Expected Result | HTTP |
+|---|---|---|---|---|---|---|---|---|---|
+| TC-AI-01 | `"Margherita Pizza"` | `"Pizza"` | 250 | `"veg"` | pizza.jpg | `["veg"]` | YES | ✅ Item created, shop returned with new item | **201** |
+| TC-AI-02 | `""` (empty) | `"Pizza"` | 250 | `"veg"` | pizza.jpg | `[]` | YES | ❌ "name is required" | **400** |
+| TC-AI-03 | `"Burger"` | `"Sushi"` (invalid enum) | 180 | `"non veg"` | burger.jpg | `[]` | YES | ❌ Enum validation error for category | **400/500** |
+| TC-AI-04 | `"Burger"` | `""` (missing) | 180 | `"non veg"` | burger.jpg | `[]` | YES | ❌ "category is required" | **400** |
+| TC-AI-05 | `"Dal Makhani"` | `"North Indian"` | 120 | `"veg"` | dal.jpg | `["veg", "gluten-free"]` | YES | ✅ Item created with multiple diet types | **201** |
+| TC-AI-06 | `"Fried Chicken"` | `"Fast Food"` | 300 | `"non veg"` | *(no image)* | `[]` | YES | ❌ Image required | **400/500** |
+| TC-AI-07 | `"Fried Chicken"` | `"Fast Food"` | 300 | `"non veg"` | menu.pdf (wrong type) | `[]` | YES | ❌ Multer/Cloudinary rejects non-image | **400/500** |
+| TC-AI-08 | `"Pasta"` | `"Others"` | 200 | `"veg"` | pasta.jpg | `[]` | **NO (no shop)** | ❌ "Shop not found. Create shop first." | **400** |
+| TC-AI-09 | `"Cake"` | `"Desserts"` | 180 | `"veg"` | cake.jpg | `["keto", "carnivore"]` (invalid) | YES | ❌ Invalid dietType enum value | **400/500** |
+| TC-AI-10 | `"Peanut Butter Toast"` | `"Snacks"` | 80 | `"veg"` | toast.jpg | `[]` | YES | allergens: `["peanuts"]`, tags: `["healthy"]` → ✅ Item created | **201** |
+| TC-AI-11 | `"Biryani"` | `"Main Course"` | **–50** | `"non veg"` | biryani.jpg | `[]` | YES | ❌ price < 0, schema min violation | **400/500** |
+| TC-AI-12 | `"Tea"` | `"Beverages"` | **0** | `"veg"` | tea.jpg | `[]` | YES | ✅ Zero-priced item allowed (free samples, etc.) | **201** |
+| TC-AI-13 | `"South Thali"` | `"South Indian"` | 150 | `"both"` (invalid) | thali.jpg | `[]` | YES | ❌ foodType enum invalid | **400/500** |
+| TC-AI-14 | `"Shawarma"` | `"Sandwiches"` | 220 | `"non veg"` | shawarma.jpg | `[]` | YES | Unauthenticated request (no cookie) | **401** |
+| TC-AI-15 | `"Ice Cream"` | `"Desserts"` | 120 | `"veg"` | icecream.jpg | `["vegan", "dairy-free"]` | YES | spiceLevel: `"low"`, tags: `["sweet", "creamy"]` → ✅ All optional fields stored | **201** |
+
+---
+
+#### Decision Table – Mandatory Field Completeness
+
+| Condition | DT-AI-01 | DT-AI-02 | DT-AI-03 | DT-AI-04 | DT-AI-05 | DT-AI-06 |
+|---|---|---|---|---|---|---|
+| name provided? | ✓ | ✗ | ✓ | ✓ | ✓ | ✓ |
+| category valid enum? | ✓ | – | ✗ | ✓ | ✓ | ✓ |
+| price ≥ 0? | ✓ | – | – | ✗ | ✓ | ✓ |
+| foodType valid enum? | ✓ | – | – | – | ✗ | ✓ |
+| image file present? | ✓ | – | – | – | – | ✗ |
+| Owner has shop? | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Expected Result** | ✅ Item created (201) | ❌ name required | ❌ category enum error | ❌ price validation | ❌ foodType enum error | ❌ image required |
+| **HTTP** | **201** | 400 | 400 | 400 | 400 | 400 |
+
+---
+
+## 8. Feature 7 – Rider: Accept Order & OTP Delivery Confirmation
+
+### Feature Description
+The delivery workflow for a **Rider (Delivery Boy)** involves two sequential actions:
+
+**Step 1 – Accept Assignment:** When an owner marks an order as "out of delivery", the rider receives a Socket.IO `newAssignment` event. They can accept the assignment via `POST /api/order/accept-order/:assignmentId`. Business rules:
+- Assignment must still be in `"broadcasted"` state (not yet taken)
+- Rider must not already have an active (non-completed) assignment
+
+**Step 2 – OTP Delivery Confirmation:** When the rider reaches the customer, they request a 4-digit OTP to be emailed to the customer (`sendDeliveryOtp`). The customer reads the OTP to the rider, who enters it (`verifyDeliveryOtp`). Rules:
+- OTP is a 4-digit integer in range **[1000, 9999]**
+- OTP expires in **5 minutes** (300,000 ms)
+- Correct OTP + not expired → status set to "delivered", assignment marked "completed"
+
+**Source:** `order.controllers.js` → `acceptOrder()`, `sendDeliveryOtp()`, `verifyDeliveryOtp()`
+
+### Technique: Boundary Value Analysis (OTP) + Decision Table (Accept Order)
+
+BVA addresses the OTP numeric range [1000–9999] and the 5-minute expiry time boundary. A Decision Table covers the multi-condition accept-order logic.
+
+#### BVA – OTP Code Boundaries
+
+| Variable | Min | Min+1 | Nominal | Max-1 | Max | Above Max | Below Min |
+|---|---|---|---|---|---|---|---|
+| OTP value (4-digit) | 1000 | 1001 | 5500 | 9998 | 9999 | 10000 | 999 |
+| Expiry delta (ms) | 0 | 1 | 150,000 | 299,999 | 300,000 | 300,001 | –1 |
+
+#### OTP BVA Test Cases
+
+| Test Case ID | Input OTP | OTP in DB | Time Since OTP Generated | Expected Result | HTTP |
+|---|---|---|---|---|---|
+| TC-OTP-01 | `"1000"` (min valid) | `"1000"` | 1 minute (valid) | ✅ "Order Delivered Successfully", status → delivered | **200** |
+| TC-OTP-02 | `"999"` (below min) | `"999"` | 1 minute | Even if DB matches — OTP generation uses `Math.floor(1000 + Math.random()*9000)` so 999 can never be generated; treat as invalid format | N/A |
+| TC-OTP-03 | `"9999"` (max valid) | `"9999"` | 1 minute | ✅ Delivered successfully | **200** |
+| TC-OTP-04 | `"10000"` (above max) | `"9999"` | 1 minute | OTP mismatch → "Invalid/Expired Otp" | **400** |
+| TC-OTP-05 | `"5500"` (nominal) | `"5500"` | 2 minutes 30 sec (within 5 min) | ✅ Delivered successfully | **200** |
+| TC-OTP-06 | `"5500"` | `"5500"` | **4 min 59 sec** (1 sec before expiry) | ✅ OTP still valid — delivered | **200** |
+| TC-OTP-07 | `"5500"` | `"5500"` | **5 min 00 sec** (at expiry) | ❌ "Invalid/Expired Otp" — `otpExpires < Date.now()` | **400** |
+| TC-OTP-08 | `"5500"` | `"5500"` | **5 min 01 sec** (just after expiry) | ❌ "Invalid/Expired Otp" | **400** |
+| TC-OTP-09 | `"1234"` (wrong OTP) | `"5678"` | 1 minute | ❌ "Invalid/Expired Otp" | **400** |
+| TC-OTP-10 | `""` (empty string) | `"5500"` | 1 minute | ❌ "Invalid/Expired Otp" (trim comparison fails) | **400** |
+| TC-OTP-11 | `" 5500 "` (with spaces) | `"5500"` | 1 minute | ✅ Trim logic normalises → Delivered (system trims both sides) | **200** |
+| TC-OTP-12 | `"5500"` | `null` (OTP never sent) | N/A | ❌ "Invalid/Expired Otp" (`storedOtp` is null after trim) | **400** |
+| TC-OTP-13 | `"5500"` | `"5500"` | Valid time | orderId invalid | ❌ "enter valid order/shopOrderId" | **400** |
+
+#### OTP Expiry Boundary Visualisation
+
+```
+Time: 0 min ──────────────── 4:59 ──── 5:00 ──── 5:01 ──► ∞
+             [  VALID WINDOW  ]        [EXPIRED] [EXPIRED]
+              TC-OTP-01..06             TC-OTP-07  TC-OTP-08
+```
+
+#### Decision Table – Accept Order (Rider)
+
+| Condition | TC-AO-01 | TC-AO-02 | TC-AO-03 | TC-AO-04 | TC-AO-05 |
+|-----------|----------|----------|----------|----------|----------|
+| Assignment exists? | NO | YES | YES | YES | YES |
+| Assignment status = "broadcasted"? | – | NO (already "assigned") | YES | YES | YES |
+| Rider already has active assignment? | – | – | YES | NO | NO |
+| Rider is in `brodcastedTo` list? | – | – | – | YES | NO |
+| **Expected Result** | "assignment not found" | "assignment is expired" | "You are already assigned to another order" | ✅ Assignment accepted; owner notified via Socket.IO | ❌ Assignment accepted by wrong person (potential security gap) |
+| **HTTP** | **400** | **400** | **400** | **200** | **200** (security concern) |
+
+#### Accept Order Test Cases
+
+| Test Case ID | Scenario | Input | Expected Output | HTTP |
+|---|---|---|---|---|
+| TC-AO-01 | Non-existent assignment ID | `assignmentId: "000000000000000000000000"` | "assignment not found" | **400** |
+| TC-AO-02 | Assignment already accepted by another rider | Assignment in state `"assigned"` | "assignment is expired" | **400** |
+| TC-AO-03 | Rider already on an active delivery | Rider has assignment with status `"assigned"` in DB | "You are already assigned to another order" | **400** |
+| TC-AO-04 | **Happy Path – valid accept** | Broadcasted assignment, rider free, rider in broadcastedTo list | Assignment → "assigned", `acceptedAt` set, owner receives `deliveryBoyAccepted` socket event | **200** |
+| TC-AO-05 | Rider accepts completed assignment | Assignment status `"completed"` | "assignment is expired" | **400** |
+| TC-AO-06 | Unauthenticated request | No auth cookie / token | Middleware rejects | **401** |
+| TC-AO-07 | **Happy Path + OTP** | Rider accepts → sends OTP → customer verifies → delivered | Full workflow: assignment→assigned, OTP emailed, verified, status→"delivered", assignment→"completed" | **200** |
+
+---
+
+## 9. Feature 8 – Payment Process – Stripe Online & COD
+
+### Feature Description
+FoodVerse supports two payment methods:
+
+**COD (Cash on Delivery):** Order is created immediately in the database with `payment.status: "pending"`. No external payment gateway interaction.
+
+**Stripe Online Payment (3-step flow):**
+1. **Initiate** (`POST /api/payment/initiate`) — Creates order in DB with `payment.status: "pending"`, calls Stripe API to create a `PaymentIntent`. Amount is converted: `totalAmount × 100` (PKR → paisa). Minimum Stripe amount: **50 paisa** (i.e., `totalAmount ≥ 0.50`).
+2. **Confirm on Frontend** — User's card details processed by Stripe.js/Elements. `clientSecret` passed to `StripePaymentForm.jsx`.
+3. **Confirm to Backend** (`POST /api/payment/confirm/:orderId`) — Backend calls `verifyPaymentStatus(paymentIntentId)`. If Stripe confirms `succeeded`, order's `payment.status` → `"paid"`, shop owners notified via Socket.IO, confirmation email sent to customer.
+
+**Source:** `order.controllers.js` → `initiateStripePayment()`, `confirmStripePayment()`, `utils/stripe.js` → `createPaymentIntent()`, `verifyPaymentStatus()`
+
+### Technique: Equivalence Partitioning + Decision Table
+
+EP partitions the `totalAmount` input domain and payment status states. A Decision Table maps payment method × validation conditions → outcomes.
+
+#### EP – Amount Input Domain for Stripe
+
+| Class ID | Partition Description | Range | Representative Value |
+|---|---|---|---|
+| EP-PAY-A1 | Below Stripe minimum (invalid) | totalAmount < 0.50 PKR | ₹0, ₹0.49 |
+| EP-PAY-A2 | At Stripe minimum | totalAmount = 0.50 PKR | ₹0.50 (= 50 paisa) |
+| EP-PAY-A3 | Normal valid amount (below free delivery) | 0.50 < totalAmount ≤ 500 | ₹150, ₹499 |
+| EP-PAY-A4 | Normal valid amount (above free delivery threshold) | totalAmount > 500 | ₹750, ₹2000 |
+| EP-PAY-A5 | Extremely large amount | totalAmount > 99,999 | ₹1,00,000 |
+| EP-PAY-A6 | Negative amount | totalAmount < 0 | ₹-100 |
+
+#### EP – Payment Intent Status Partitions
+
+| Class ID | Stripe Status | Meaning | Action |
+|---|---|---|---|
+| EP-PAY-S1 | `succeeded` | Card charged successfully | Order confirmed, email sent |
+| EP-PAY-S2 | `requires_payment_method` | Card declined | Backend returns "Payment verification failed" |
+| EP-PAY-S3 | `requires_action` | 3D Secure required | Frontend handles; backend waits for confirm call |
+| EP-PAY-S4 | `canceled` | Payment cancelled by user/timeout | Order remains with pending payment |
+| EP-PAY-S5 | Already `paid` (duplicate confirm call) | Idempotency scenario | "Payment already confirmed" returned without re-processing |
+
+#### EP Test Cases – Amount Validation
+
+| Test Case ID | totalAmount | Converted (paisa) | Stripe API Called? | Expected Result | HTTP |
+|---|---|---|---|---|---|
+| TC-PAY-EP-01 | **₹0** | 0 paisa | NO | "Invalid amount" — backend validation catches `totalAmount <= 0` | **400** |
+| TC-PAY-EP-02 | **₹0.49** | 49 paisa | YES (but Stripe rejects) | Stripe throws: "Amount must be at least 50 in smallest currency unit" | **400** |
+| TC-PAY-EP-03 | **₹0.50** | 50 paisa (minimum) | YES ✅ | PaymentIntent created; clientSecret returned | **200** |
+| TC-PAY-EP-04 | **₹150** | 15,000 paisa | YES ✅ | PaymentIntent created successfully | **200** |
+| TC-PAY-EP-05 | **₹500** | 50,000 paisa | YES ✅ | PaymentIntent created; delivery fee ₹40 already included in totalAmount | **200** |
+| TC-PAY-EP-06 | **₹750** | 75,000 paisa | YES ✅ | PaymentIntent created; free delivery already applied | **200** |
+| TC-PAY-EP-07 | **₹1,00,000** | 1,00,00,000 paisa | YES ✅ | PaymentIntent created (Stripe handles large amounts) | **200** |
+| TC-PAY-EP-08 | **₹-100** | -10,000 paisa | NO | "Invalid amount" — backend catches `totalAmount <= 0` | **400** |
+
+#### EP Test Cases – Payment Status Confirmation
+
+| Test Case ID | Stripe PaymentIntent Status | Previous order payment.status | Expected Backend Action | HTTP |
+|---|---|---|---|---|
+| TC-PAY-EP-09 | **`succeeded`** | pending | ✅ `payment.status → "paid"`, `paidAt` set, socket `newOrder` to owner, confirmation email sent | **200** |
+| TC-PAY-EP-10 | **`requires_payment_method`** (card declined) | pending | ❌ "Payment verification failed"; order remains pending | **400** |
+| TC-PAY-EP-11 | **`canceled`** | pending | ❌ "Payment verification failed" | **400** |
+| TC-PAY-EP-12 | **`succeeded`** (duplicate confirm call) | **paid** | "Payment already confirmed" — idempotent; no re-processing | **200** |
+| TC-PAY-EP-13 | `succeeded` | pending | orderId belongs to a **different user** | ❌ "Unauthorized access to order" | **403** |
+| TC-PAY-EP-14 | `succeeded` | pending | orderId does not exist in DB | ❌ "Order not found" | **404** |
+
+#### Decision Table – Full Payment Flow
+
+**Conditions:**
+- C1: Payment method (cod / online)
+- C2: Cart empty?
+- C3: Address complete (text + lat + lon)?
+- C4: totalAmount > 0?
+- C5: Stripe PaymentIntent creation successful?
+- C6: Stripe payment status = `succeeded` (on confirm step)?
+
+| Condition/Action | DT-PAY-01 | DT-PAY-02 | DT-PAY-03 | DT-PAY-04 | DT-PAY-05 | DT-PAY-06 |
+|---|---|---|---|---|---|---|
+| C1: Payment method | COD | COD | Online | Online | Online | Online |
+| C2: Cart empty? | NO | YES | NO | NO | NO | NO |
+| C3: Address complete? | YES | – | YES | NO | YES | YES |
+| C4: totalAmount > 0? | YES | – | YES | – | NO | YES |
+| C5: Stripe PI created? | N/A | N/A | – | – | N/A | YES |
+| C6: Stripe status = succeeded? | N/A | N/A | N/A | N/A | N/A | YES |
+| **Expected Action** | ✅ Order created (pending payment) | ❌ "Cart is empty" | ❌ "Send Complete Delivery Address" | ❌ "Send Complete Delivery Address" | ❌ "Invalid amount" | ✅ Order confirmed, paid, owner notified |
+| **HTTP** | 201 | 400 | 400 | 400 | 400 | 200 |
+
+#### Full Decision Table Test Cases
+
+| Test Case ID | Method | Cart | Address | Amount | Stripe PI | Stripe Confirm | Expected Outcome | HTTP |
+|---|---|---|---|---|---|---|---|---|
+| TC-PAY-DT-01 | **COD** | ✅ 2 items | ✅ complete | ₹340 | N/A | N/A | Order created immediately, `payment.status: pending`, Shop owner gets Socket `newOrder` event | **201** |
+| TC-PAY-DT-02 | **COD** | ❌ empty | – | – | N/A | N/A | "Cart is empty" | **400** |
+| TC-PAY-DT-03 | **Online** | ✅ 2 items | ❌ no text | ₹340 | N/A | N/A | "Send Complete Delivery Address" | **400** |
+| TC-PAY-DT-04 | **Online** | ✅ 2 items | ❌ lat missing | ₹340 | N/A | N/A | "Send Complete Delivery Address" | **400** |
+| TC-PAY-DT-05 | **Online** | ✅ 2 items | ✅ complete | **₹0** | N/A | N/A | "Invalid amount" | **400** |
+| TC-PAY-DT-06 | **Online** | ✅ 2 items | ✅ complete | ₹540 | ✅ created | – | clientSecret + orderId returned to frontend; order in DB with `payment.status: pending` | **200** |
+| TC-PAY-DT-07 | **Online** | ✅ 2 items | ✅ complete | ₹540 | ❌ Stripe API error | – | Order deleted from DB; "Failed to create payment" | **400** |
+| TC-PAY-DT-08 | **Online** | ✅ 2 items | ✅ complete | ₹540 | ✅ created | ✅ succeeded | `payment.status→paid`, email sent, socket `newOrder` to all shop owners in order | **200** |
+| TC-PAY-DT-09 | **Online** | ✅ 2 items | ✅ complete | ₹540 | ✅ created | ❌ declined | "Payment verification failed"; order stays pending | **400** |
+| TC-PAY-DT-10 | **Online** | ✅ 2 items | ✅ complete | ₹540 | ✅ created | ✅ succeeded (2nd call, already paid) | "Payment already confirmed" — idempotent | **200** |
+
+#### Stripe Payment Flow Diagram
+
+```
+Customer Checkout
+      │
+      ├─(COD)──────────────────────────────────► POST /api/order/place-order
+      │                                                │
+      │                                         201: Order created
+      │                                         payment.status = "pending"
+      │                                                │
+      │                                         Socket → Shop Owner
+      │
+      └─(Online)───────────────────────────────► POST /api/payment/initiate
+                                                       │
+                                              Validates: cart, address, amount
+                                                       │
+                                              Creates Order (payment.status=pending)
+                                                       │
+                                              Stripe: createPaymentIntent
+                                                       │
+                                          ┌── Stripe fails ──► Delete order → 400
+                                          │
+                                          └── Stripe OK ──► Returns clientSecret
+                                                       │
+                                               [StripePaymentForm]
+                                              Card details → Stripe
+                                                       │
+                                         ┌── Card declined ──► POST /confirm → 400
+                                         │
+                                         └── Card OK ──────► POST /api/payment/confirm/:orderId
+                                                                    │
+                                                           verifyPaymentStatus(intentId)
+                                                                    │
+                                                        payment.status → "paid"
+                                                        Socket: newOrder → all owners
+                                                        Email: confirmation to customer
+                                                                    │
+                                                                 200 ✅
+```
+
+---
+
+## 10. Technique Comparison & Justification
+
+### 10.1 Comparison of Selected Techniques
 
 | Technique | Best For | Limitation | Used For |
 |---|---|---|---|
@@ -342,7 +706,7 @@ Users set dietary preferences (veg, vegan, halal, keto, etc.) and allergen lists
 | **Use Case Testing** | End-to-end scenario validation; user journey covering multiple features | Coarse-grained; misses edge conditions within individual features | Could test: User browses→adds to cart→checks out→receives order |
 | **Error Guessing** | Exploratory testing; finding bugs through experience | Subjective; not systematic | Could supplement any feature |
 
-### 7.2 Justification for Each Chosen Technique
+### 10.2 Justification for Each Chosen Technique
 
 #### Feature 1 (Order Placement) → Decision Table
 The `placeOrder` function validates **4 independent conditions simultaneously**: cart emptiness, address text, coordinate validity, and payment method. Each condition can be TRUE or FALSE independently, producing different error messages or success paths. Decision tables excel at ensuring **all combinations** of these conditions are covered, preventing cases where two simultaneous failures mask each other. Alternative techniques like BVA would miss the combinatorial interactions; EP cannot capture boolean combinations efficiently.
@@ -359,11 +723,20 @@ The engine's inputs are **multi-dimensional user profile attributes** with large
 #### Feature 5 (Dietary Filtering) → EP + Decision Table
 This feature mixes two concerns: (a) **categorical equivalence classes** for preference types (EP captures these), and (b) **multi-condition boolean filter logic** (veg pref AND allergen overlap → exclude). The Decision Table precisely maps filter condition combinations to inclusion/exclusion outcomes, eliminating ambiguity about what happens when veg preference AND allergen filter fire simultaneously. Using only EP would miss the interaction between dietary type and allergen filters.
 
+#### Feature 6 (Owner: Add Food Item) → EP + BVA
+The `addItem` function accepts **8 distinct fields** spanning large categorical enums (12 categories, 19 diet types, 17 allergens, 11 tags) plus a numeric `price` field with a schema minimum. EP is ideal for the categorical inputs: it reduces the 12 category values to three classes (valid, invalid-enum, missing) without needing to test all 12 individually. BVA is essential for `price` specifically because the `min: 0` schema constraint creates a boundary — testing –1, 0, and 1 will expose any off-by-one in validation. A Decision Table captures the mandatory-field completeness combinations. Using only EP or only BVA would leave gaps: EP alone misses the price boundary precision; BVA alone cannot address the categorical enum classes efficiently.
+
+#### Feature 7 (Rider OTP Delivery Confirmation) → BVA + Decision Table
+The OTP is a **4-digit code with a fixed numeric range [1000–9999]** and a **hard expiry at exactly 5 minutes** — both are classic BVA targets. Off-by-one errors at the boundaries (e.g., accepting an OTP at exactly minute 5:00 vs. 5:01) are high-probability defects. The Decision Table on the `acceptOrder` side captures the multi-condition rider eligibility check (assignment state × rider busy state). Using EP alone for OTP would miss the expiry boundary precision; using BVA alone would miss the combinatorial acceptance conditions.
+
+#### Feature 8 (Payment Process) → EP + Decision Table
+The Stripe payment flow has two distinct input dimensions: **(a) amount partitions** (below minimum, at minimum, normal, large) best covered by EP since all values above 50 paisa behave identically from the business rules perspective, and **(b) multi-condition payment workflow** (method × validation × Stripe outcome) best captured by a Decision Table. Pure BVA on the amount would generate excessive test cases for values far from the Stripe 50-paisa minimum. Decision tables ensure the three-step flow (initiate → frontend confirm → backend confirm) covers all success/failure combinations systematically.
+
 ---
 
-## 8. Testing Level Analysis
+## 11. Testing Level Analysis
 
-### 8.1 At Which Testing Level is Black-Box Testing Applied?
+### 11.1 At Which Testing Level is Black-Box Testing Applied?
 
 Black-box testing is applied at **multiple testing levels**, but is most prominently used at:
 
@@ -374,7 +747,7 @@ Black-box testing is applied at **multiple testing levels**, but is most promine
 | **System Testing** | **Primary level** – entire application tested as a black box against requirements | Testing all 5 features end-to-end via REST API and React UI |
 | **Acceptance Testing (UAT)** | **Primary level** – stakeholders validate against business requirements | Verifying that "orders above ₹500 get free delivery" matches business specification |
 
-### 8.2 Why Black-Box Testing is Suitable at System and Acceptance Testing Levels
+### 11.2 Why Black-Box Testing is Suitable at System and Acceptance Testing Levels
 
 #### At System Testing Level:
 1. **Implementation Independence:** Testers validate the system against its **specification** without needing access to or knowledge of the Node.js/React source code. The REST API contract (e.g., `POST /api/order/place-order` returns 400 for empty cart) is the specification.
@@ -399,7 +772,7 @@ Black-box testing is applied at **multiple testing levels**, but is most promine
 
 ---
 
-## 9. Feature-wise Test Summary Report
+## 12. Feature-wise Test Summary Report
 
 ### Feature 1 – Order Placement & Validation
 
@@ -464,16 +837,68 @@ Black-box testing is applied at **multiple testing levels**, but is most promine
 | Critical Risk | TC-DT-08: veg item with user allergen must be EXCLUDED (allergen takes priority over veg match) |
 | Compliance Relevance | Allergen filtering TCs serve as food safety compliance evidence |
 
+---
+
+### Feature 6 – Owner: Add Food Item
+
+| Metric | Value |
+|---|---|
+| Perspective | **Shop Owner** |
+| Techniques | Equivalence Partitioning + Boundary Value Analysis + Decision Table |
+| EP Test Cases | 15 (TC-AI-01 to TC-AI-15) |
+| BVA Price TCs | 8 (TC-AI-PR-01 to TC-AI-PR-08) |
+| Decision Table TCs | 6 (DT-AI-01 to DT-AI-06) |
+| **Total Test Cases** | **29** |
+| EP Dimensions Covered | Name (5 classes), Category (4), FoodType (4), DietType (5), Image (5), Shop existence (2) |
+| BVA Boundary Points | price: –1, 0, 1, 150, 99999, "abc", null, 0.5 |
+| Critical Risk | TC-AI-08: owner without a shop gets a clear error; TC-AI-06/07: missing/invalid image handled |
+| Happy Path | TC-AI-01: all valid fields → item created, shop object returned with new item linked |
+| Key Business Rule | Image is mandatory; `name`, `category`, `price`, `foodType` are all required; shop must exist first |
+
+### Feature 7 – Rider: Accept Order & OTP Delivery Confirmation
+
+| Metric | Value |
+|---|---|
+| Perspective | **Delivery Boy (Rider)** |
+| Techniques | Boundary Value Analysis (OTP range + expiry) + Decision Table (accept eligibility) |
+| OTP BVA Test Cases | 13 (TC-OTP-01 to TC-OTP-13) |
+| Accept Order Decision Table TCs | 7 (TC-AO-01 to TC-AO-07) |
+| **Total Test Cases** | **20** |
+| OTP Boundary Points | 1000 (min), 9999 (max), expiry boundary at exactly 300,000 ms (5 min) |
+| Critical Expiry TCs | TC-OTP-06 (4:59 — valid), TC-OTP-07 (5:00 — expired), TC-OTP-08 (5:01 — expired) |
+| Critical Accept TCs | TC-AO-03 (already-busy rider cannot double-accept), TC-AO-02 (expired assignment rejected) |
+| End-to-End Happy Path | TC-AO-07: accept → OTP sent → OTP verified → delivered → assignment completed |
+| Security Concern | TC-AO-05: rider not in `brodcastedTo` list can still call `acceptOrder` — potential auth gap |
+
+### Feature 8 – Payment Process: Stripe Online & COD
+
+| Metric | Value |
+|---|---|
+| Perspective | **Customer (User)** |
+| Techniques | Equivalence Partitioning + Decision Table |
+| EP Amount TCs | 8 (TC-PAY-EP-01 to TC-PAY-EP-08) |
+| EP Payment Status TCs | 6 (TC-PAY-EP-09 to TC-PAY-EP-14) |
+| Decision Table TCs | 10 (TC-PAY-DT-01 to TC-PAY-DT-10) |
+| **Total Test Cases** | **24** |
+| Stripe Minimum Boundary | ₹0.50 (50 paisa) — TC-PAY-EP-02 (49 paisa, invalid) vs TC-PAY-EP-03 (50 paisa, valid) |
+| Idempotency TC | TC-PAY-DT-10 / TC-PAY-EP-12: duplicate confirm returns "already confirmed" safely |
+| COD Happy Path | TC-PAY-DT-01: immediate order creation, no Stripe, socket to owner |
+| Stripe Failure Safety | TC-PAY-DT-07: PI creation fails → order deleted from DB (no orphan orders) |
+| Critical Risk | TC-PAY-EP-09: payment must transition to "paid" AND trigger owner notification + confirmation email |
+
 ### Overall Test Summary
 
-| Feature | Technique | # Test Cases | Risk Level |
-|---|---|---|---|
-| 1. Order Placement | Decision Table | 10 | 🔴 HIGH – core business flow |
-| 2. Item Rating & Review | BVA | 14 | 🟡 MEDIUM – data integrity |
-| 3. Delivery Fee Calculation | BVA | 13 | 🔴 HIGH – direct financial impact |
-| 4. Recommendation Engine | Equivalence Partitioning | 12 | 🟡 MEDIUM – personalization quality |
-| 5. Dietary & Allergen Filter | EP + Decision Table | 15 | 🔴 HIGH – food safety / health risk |
-| **TOTAL** | **Mixed** | **64** | – |
+| Feature | Perspective | Technique | # Test Cases | Risk Level |
+|---|---|---|---|---|
+| 1. Order Placement | Customer | Decision Table | 10 | 🔴 HIGH – core business flow |
+| 2. Item Rating & Review | Customer | BVA | 14 | 🟡 MEDIUM – data integrity |
+| 3. Delivery Fee Calculation | Customer | BVA | 13 | 🔴 HIGH – direct financial impact |
+| 4. Recommendation Engine | Customer | Equivalence Partitioning | 12 | 🟡 MEDIUM – personalization quality |
+| 5. Dietary & Allergen Filter | Customer | EP + Decision Table | 15 | 🔴 HIGH – food safety / health risk |
+| 6. Add Food Item (Owner) | **Owner** | EP + BVA + Decision Table | 29 | 🟡 MEDIUM – menu data integrity |
+| 7. Accept Order & OTP Delivery | **Rider** | BVA + Decision Table | 20 | 🔴 HIGH – delivery security & fraud |
+| 8. Payment Process (Stripe+COD) | Customer | EP + Decision Table | 24 | 🔴 HIGH – financial transaction integrity |
+| **TOTAL** | **All Roles** | **Mixed** | **137** | – |
 
 ---
 
@@ -486,6 +911,11 @@ Black-box testing is applied at **multiple testing levels**, but is most promine
 | TC-DF-01 to TC-DF-13 | `CheckOut.jsx` | `deliveryFee` calculation | BVA |
 | TC-REC-01 to TC-REC-12 | `recommendation.controllers.js` | `getRecommendations()` | EP |
 | TC-DT-01 to TC-DT-10 + TC-DF-EP-01 to TC-DF-EP-05 | `recommendation.controllers.js` | Allergen + dietary query filter | EP + Decision Table |
+| TC-AI-01 to TC-AI-15 + TC-AI-PR-01 to TC-AI-PR-08 + DT-AI-01 to DT-AI-06 | `item.controllers.js`, `AddItem.jsx`, `item.model.js` | `addItem()` — owner food item creation | EP + BVA + Decision Table |
+| TC-OTP-01 to TC-OTP-13 | `order.controllers.js` | `sendDeliveryOtp()`, `verifyDeliveryOtp()` | BVA |
+| TC-AO-01 to TC-AO-07 | `order.controllers.js`, `assignDeliveryBoy.controllers.js` | `acceptOrder()` — rider eligibility | Decision Table |
+| TC-PAY-EP-01 to TC-PAY-EP-14 | `order.controllers.js`, `utils/stripe.js` | `initiateStripePayment()`, `confirmStripePayment()`, `createPaymentIntent()` | Equivalence Partitioning |
+| TC-PAY-DT-01 to TC-PAY-DT-10 | `order.controllers.js`, `CheckOut.jsx`, `StripePaymentForm.jsx` | Full payment workflow (COD + Stripe) | Decision Table |
 
 ---
 
@@ -498,3 +928,10 @@ Black-box testing is applied at **multiple testing levels**, but is most promine
 | Allergen exclusion `$nin` query missing | Feature 4 & 5 | Health hazard – allergic users see unsafe food |
 | Cart emptiness not checked before payment intent | Feature 1 | Unnecessary Stripe API calls; UX confusion |
 | Duplicate rating not detected (missing `findOne` check) | Feature 2 | Item average inflated by duplicate votes |
+| Missing shop check allows item creation without a shop | Feature 6 | Item references non-existent shop — orphan item in DB |
+| Negative price accepted (schema min: 0 not enforced at controller) | Feature 6 | Items with negative prices visible to customers |
+| Invalid category enum not caught before DB insert | Feature 6 | Mongoose cast error returns 500 instead of clean 400 |
+| OTP accepted at exact 5:00 expiry moment (boundary) | Feature 7 | Expired OTP passes if clock comparison is `<=` instead of `<` |
+| Rider not in `brodcastedTo` list can call `acceptOrder` | Feature 7 | Unauthorised rider can hijack any broadcasted delivery assignment |
+| Stripe PI creation failure does not delete order | Feature 8 | Orphan orders with `payment.status: pending` accumulate in DB |
+| Duplicate `confirmStripePayment` call re-triggers owner `newOrder` socket event | Feature 8 | Owner receives duplicate notifications; double-processing risk |
